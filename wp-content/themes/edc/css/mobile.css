@@ -1,0 +1,488 @@
+/* @override http://local.m.edcwc.com/wp-content/themes/edc/css/mobile.css */
+
+/* http://meyerweb.com/eric/tools/css/reset/ 
+   v2.0 | 20110126
+   License: none (public domain)
+*/
+
+html, body, div, span, applet, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, acronym, address, big, cite, code,
+del, dfn, em, img, ins, kbd, q, s, samp,
+small, strike, strong, sub, sup, tt, var,
+b, u, i, center,
+dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font-size: 100%;
+	font: inherit;
+	vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure, 
+footer, header, hgroup, menu, nav, section {
+	display: block;
+}
+body {
+	line-height: 1;
+}
+ol, ul {
+	list-style: none;
+}
+blockquote, q {
+	quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+	content: '';
+	content: none;
+}
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+
+/**
+ * Minimal base styles.
+ */
+
+/* Prevent mobile zooming while remain desktop zooming: github.com/shichuan/mobile-html5-boilerplate/issues/closed#issue/14 */
+html { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+
+/* Accessible focus treatment: people.opera.com/patrickl/experiments/keyboard/test */
+a:hover, a:active { outline: none; }
+
+/* Remove margins for navigation lists */
+nav ul, nav li { margin: 0; list-style:none; list-style-image: none; }
+
+small { font-size: 85%; }
+strong, th { font-weight: bold; }
+
+td { vertical-align: top; }
+
+/* Set sub, sup without affecting line-height: gist.github.com/413930 */
+sub, sup { font-size: 75%; line-height: 0; position: relative; }
+sup { top: -0.5em; }
+sub { bottom: -0.25em; }
+
+pre {
+  /* www.pathf.com/blogs/2008/05/formatting-quoted-code-in-blog-posts-css21-white-space-pre-wrap/ */
+  white-space: pre; white-space: pre-wrap; word-wrap: break-word;
+  padding: 15px;
+}
+
+textarea { overflow: auto; } /* www.sitepoint.com/blogs/2010/08/20/ie-remove-textarea-scrollbars/ */
+
+.iem7 legend { margin-left: -7px; }
+
+/* Align checkboxes, radios, text inputs with their label by: Thierry Koblentz tjkdesign.com/ez-css/css/base.css  */
+input[type="radio"] { vertical-align: text-bottom; }
+input[type="checkbox"] { vertical-align: bottom; }
+.iem7 input[type="checkbox"] { vertical-align: baseline; }
+
+/* Hand cursor on clickable input elements */
+label, input[type="button"], input[type="submit"], input[type="image"], button { cursor: pointer; }
+
+/* Webkit browsers add a 2px margin outside the chrome of form elements */
+button, input, select, textarea { margin: 0; }
+
+/* Colors for form validity */
+input:valid, textarea:valid   {  }
+input:invalid, textarea:invalid {
+   border-radius: 1px; -moz-box-shadow: 0px 0px 5px red; -webkit-box-shadow: 0px 0px 5px red; box-shadow: 0px 0px 5px red;
+}
+.no-boxshadow input:invalid, .no-boxshadow textarea:invalid { background-color: #f0dddd; }
+
+
+/* These selection declarations have to be separate
+   No text-shadow: twitter.com/miketaylr/status/12228805301 */
+::-moz-selection{ background: #F15D22; color:#fff; text-shadow: none; }
+::selection { background:#F15D22; color:#fff; text-shadow: none; }
+
+/* j.mp/webkit-tap-highlight-color */
+a:link { -webkit-tap-highlight-color: #F15D22; }
+
+/* Make buttons play nice in IE:
+   www.viget.com/inspire/styling-the-button-element-in-internet-explorer/ */
+button {  width: auto; overflow: visible; }
+
+/* Bicubic resizing for non-native sized IMG:
+   code.flickr.com/blog/2008/11/12/on-ui-quality-the-little-things-client-side-image-resizing/ */
+.iem7 img { -ms-interpolation-mode: bicubic; }
+
+
+/*
+ * Helper classes
+ */
+
+/* prevent callout */
+.nocallout {-webkit-touch-callout: none;}
+
+/* Text overflow with ellipsis */
+.ellipsis {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* For image replacement */
+.ir { display: block; text-indent: -999em; overflow: hidden; background-repeat: no-repeat; text-align: left; direction: ltr; }
+
+/* Hide for both screenreaders and browsers:
+   css-discuss.incutio.com/wiki/Screenreader_Visibility */
+.hidden { display: none; visibility: hidden; }
+
+/* Hide only visually, but have it available for screenreaders: by Jon Neal.
+  www.webaim.org/techniques/css/invisiblecontent/  &  j.mp/visuallyhidden */
+.visuallyhidden { border: 0; clip: rect(0 0 0 0); height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; width: 1px; }
+/* Extends the .visuallyhidden class to allow the element to be focusable when navigated to via the keyboard: drupal.org/node/897638 */
+.visuallyhidden.focusable:active,
+.visuallyhidden.focusable:focus { clip: auto; height: auto; margin: 0; overflow: visible; position: static; width: auto; }
+
+/* Hide visually and from screenreaders, but maintain layout */
+.invisible { visibility: hidden; }
+
+/* The Magnificent Clearfix: Updated to prevent margin-collapsing on child elements.
+   j.mp/bestclearfix */
+.clearfix:before, .clearfix:after { content: "\0020"; display: block; height: 0; overflow: hidden; }
+.clearfix:after { clear: both; }
+/* Fix clearfix: blueprintcss.lighthouseapp.com/projects/15318/tickets/5-extra-margin-padding-bottom-of-page */
+.clearfix { zoom: 1; }
+
+
+/* 
+ * Primary Styles for mobile
+ */
+
+body {
+  color: #444;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background-color: #FEFACA;
+}
+
+a, h1, h3, h4, h6 {
+	text-decoration: none;
+	color: #1C75BC;
+}
+
+h1, .nav {
+	font-size: 20px;
+}
+
+h1 {
+	padding-bottom: 10px;
+	border-bottom: 1px dashed #ccc;
+}
+
+h3, h4, h5, h6 {
+	font-size: 15px;
+	margin-top: 30px;
+}
+
+h6 {
+	font-size: 13px;
+}
+
+h3, h4, h6 {
+	font-weight: bold;
+	font-style: italic;
+}
+
+p, table, h1, h2, h3, h4, h5, h6 {
+	margin-bottom: 10px;
+}
+
+/* No margin on headers that come right after another header */
+h3 + h4, h4 + h5, h5 + h6 {
+	margin-top: 0;
+}
+
+img {
+	display: block;
+	float: none;
+	max-width: 100%;
+	height: auto !important;
+}
+
+.home #main a, h5 {
+	color: #F15D22;
+	text-shadow: none;
+}
+
+ul li, .home ul li {
+	border-top: 1px dashed #ddd;
+	border-bottom: 1px dashed #fff;
+}
+
+ul li:first-child {
+	border-top: none;
+}
+
+ul li:last-child, #footer li:last-child, body ol li:last-child {
+	border-bottom: none;
+	border-right: none;
+}
+
+.home, h1, h2, #header a, #footer  {
+	text-align: center;
+}
+
+/* HEADER */
+
+.home #header {
+	z-index: 1;
+	border-bottom: 3px solid #eee;
+	
+	-moz-box-shadow: 0 1px 3px #eee;
+	-webkit-box-shadow: 0 1px 3px #eee;
+	box-shadow: 0 1px 3px #eee;
+}
+
+.home h1 {
+	height: 123px;
+	background: #fdcc33 url(../images/mobile/masthead_home.png) center top no-repeat;
+	border-bottom: 1px solid #ffbc04;
+	margin: 0;
+	padding: 0;
+}
+
+#header {
+	position: relative;
+	background: #fdcc33 url(../images/mobile/masthead.png) center top no-repeat;
+	width: 100%;
+	
+	-moz-box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+	-webkit-box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+	box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+#header a {
+	display: block;
+	height: 52px; 
+	background: url(../images/mobile/sprite.png) left -34px no-repeat;
+	border-bottom: 1px solid #ffbc04;
+	color: #fff;
+	font-size: 24px;
+	text-shadow: #777 0 1px 0;
+	line-height: 52px;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	-o-text-overflow: ellipsis;
+}
+
+/* Pointer */
+#header .back:after {
+	content: '';
+	display: block;
+	height: 16px;
+	width: 38px;
+	background: url(../images/mobile/sprite.png) 0 -104px no-repeat;
+	position: absolute;
+	bottom: -15px;
+	left: 40px;
+}
+
+#header .back, #header .home {
+	width: 14.95%;
+	float: left;
+}
+
+#header .home {
+	background-position: right 15px;
+}
+
+#header .title {
+	width: 70%;
+	float: left;
+	background: none;
+}
+
+/* end header */
+
+/* BODY */
+
+.home #main, .page #main, #main {
+	background: #fff;
+	margin: 0 6px 20px;
+	padding: 27px 10px;
+	border: 2px solid hsl(51,61%,89%);
+	border-top: none;
+	border-bottom: 3px solid #f0eac2;
+	
+	-moz-box-shadow: 0 1px 3px #f0eac2;
+	-webkit-box-shadow: 0 1px 3px #f0eac2;
+	box-shadow: 0 1px 3px #f0eac2;
+}
+
+#main {
+	background: #3481b5 url(../images/mobile/bg-stripe.gif);
+}
+
+.page #main {
+	margin-left: 0;
+	margin-right: 0;
+	border-left: none;
+	border-right: none;
+	font-size: 12px;
+	line-height: 16px;
+}
+
+.nav li {
+	border-top-color: hsl(204,43%,52%);
+	border-bottom-color: #2874a8;
+}
+
+.nav a {
+	display: block;
+	padding: 10px 0 10px 30px;
+	color: #fff;
+	text-shadow: hsl(204,55%,26%) 0 1px 0;
+}
+
+.home .nav a {
+	padding-left: 0;
+}
+
+.page ul {
+	list-style: square;
+	list-style-position: inside;
+}
+
+.toc {
+	background-color: #eee;
+	border: 1px solid #ddd;
+	margin-bottom: 30px;
+	
+	-moz-border-radius: 2px;
+	-webkit-border-radius: 2px;
+	border-radius: 2px;
+	-khtml-border-radius: 2px; /* for old Konqueror browsers */
+}
+
+.toc h3 {
+	color: #777;
+	font-weight: bold;
+	padding: 10px 0 0 10px;
+}
+
+.toc ol {
+	padding: 5px 10px 10px 10px;
+}
+
+.toc > ol > li {
+	border-bottom: 1px solid #ddd;
+	padding: 4px 0;
+}
+
+.toc li > ol {
+	display: none;
+}
+
+.toc li > ol li {
+	list-style: inside square;
+	padding: 1px 0;
+}
+
+.toc a {
+	display: block;
+}
+
+/* Tables */
+
+table, .toc {
+	width: 100%;
+	font-size: 10px;
+}
+
+th {
+	color: #fff;
+}
+
+td, th {
+	border-right: 3px solid #fff;
+	border-bottom: 3px solid #fff;
+	padding: 0 4px;
+}
+
+td:last-child, th:last-child {
+	border-right: none;
+}
+
+th { background-color: #F4572F; }
+th + th { background-color: #1C75BC; }
+th + th + th { background-color: #15B779; }
+th + th + th + th { background-color: #682E8C; }
+th + th + th + th + th { background-color: #C0132F; }
+th + th + th + th + th + th { background-color: #AA7B55; }
+
+td { background-color: hsl(12,90%,95%); }
+td + td { background-color: hsl(203,50%,95%); }
+td + td + td { background-color: hsl(157,59%,95%); }
+td + td + td + td { background-color: hsl(277,51%,96%); }
+td + td + td + td + td { background-color: hsl(350,82%,95%); }
+td + td + td + td + td + td { background-color: hsl(27,33%,93%); }
+
+/* About us page */
+
+.page-slug-contact-us table {
+	font-size: 12px;
+}
+
+.page-slug-contact-us td {
+	vertical-align: bottom;
+	background-color: #fff;
+	border-bottom: 1px dashed #ccc;
+	padding: 10px 0;
+}
+
+.page-slug-contact-us td + td {
+	padding-left: 10px;
+}
+
+.page-slug-contact-us tr:last-child td {
+	border-bottom: none;
+}
+
+.page-slug-contact-us td p {
+	margin: 0;
+}
+
+/* end body */
+
+/* FOOTER */
+
+#footer {
+	font-size: 10px;
+}
+
+#footer ol {
+	padding-bottom: 10px;
+	border-bottom: 1px dashed #f0eac2;
+}
+
+#footer li {
+	list-style: none;
+	display: inline;
+	border-right: 1px solid #ddd;
+	padding: 0 10px 0 4px;
+}
+
+#footer ol a {
+	color: #999;
+}
+
+#footer p {
+	color: #D7D4B1;
+	padding-top: 10px;
+	margin-bottom: 5px;
+	border-top: 1px dashed hsl(55,96%,95%);
+}

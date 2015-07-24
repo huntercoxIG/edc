@@ -1,0 +1,298 @@
+/*
+Theme Name: EDC Wordpress 3.2 Theme
+Theme URI: http://wordpress.org/
+Description: Custom Theme Built for EDC of Wayne County.
+Author: IronGate Creative
+Version: 3.2
+Author URI: http://irongatecreative.com/
+*/
+#hd input.menuctl, #hd label.menuctl, .m_homeLink, .mobile-only {display: none;}
+
+.column_container {
+	width: 100%;
+	clear: both;
+}
+.columns_3 {
+	float: left;
+	width: 32%;
+	margin: .5%;
+	font-size: 9px;
+	line-height: 1.4em;
+}
+.columns_3 h3 {
+	margin: 1.5em 0 .5em 0;
+}
+
+#post-2614 {
+	font-size: 9px;
+	line-height: 13px;
+}
+
+#post-2614 .entry-title {
+	display: none;
+}
+#post-2614 .entry-content .entry-title {
+	display: block;
+	font-size: 2em;
+}
+#post-2614 .entry-content h1.entry-title {
+	font-size: 2em;
+}
+#post-2614 .entry-content h2.entry-title {
+	display: block;
+	font-size: 1.5em;
+}
+.mobile-only .homepage-column {
+	margin: 10px 0px 0px 0px;
+	padding-left: 10px;
+}
+
+#post-2614 h3 {
+	/*font-size: 9px !important;*/
+	margin-bottom:2px;
+}
+
+@media only screen and (max-width:500px) { /* Smartphone custom styles */
+
+	.page-item-142 {
+		display: none;
+	}
+
+}
+
+
+@media only screen and (max-width:321px) { /* Smartphone custom styles */
+
+	table {
+		width: 260px !important;
+	}
+
+	td {
+		width: 130px;
+		vertical-align: top;
+	}
+
+	td img {
+		max-width: 75px !important;
+	}
+
+	.homepage-column:nth-child(3) h2 a {
+		text-indent: -.5em;
+	}
+
+	#hd #banner a#logo {
+		display: block;
+		position: absolute;
+		text-indent: -99999px;
+		height: inherit;
+		width: 100%;
+		left: 0;
+		top: 0;
+	}
+
+	#hd #banner {
+		background-position: -20px !important;
+	}
+
+}
+
+@media only screen and (max-width:494px) { /* Smartphone custom styles */
+
+	body {width: 100%;}
+
+	img {
+		max-width: 260px;
+		height: auto;
+	}
+
+	.alignright, .alignleft {
+	  float: none;
+	}
+
+	#post-130 iframe {
+		display: none;
+	}
+
+	a.m_homeLink {
+	    float: left;
+	    display:inline-block;
+	    background: transparent;
+	    width: 50px;
+	    height: 48px;
+	    padding-top: 2px;
+	    color: #fff;
+	    font-size: 2em;
+	    font-weight: bold;
+	    line-height: 50px;
+	    text-align: center;
+	}
+
+	.nav>ul {display: none;}
+
+	.m_navContainer {
+		position: absolute;
+		top: 150px;
+		background: #f15d22;
+		width: 100%;
+		height: 50px;
+	
+
+	#hd input.menuctl, #hd label.menuctl {display: block;}
+
+	#hd {
+		position: relative;
+	}
+	#banner {
+		background-image: url("images/header.jpg") !important;
+	}
+	#bd {padding-top: 50px; }
+
+	.column_container {
+	}
+	.columns_3 {
+		float: none;
+		width: 100%;
+		margin: 0%;
+		font-size: inherit;
+		line-height: 1.4em;
+	}
+	.columns_3 h3 {
+		margin: 1.5em 0 .5em 0;
+	}
+
+
+	/* Advanced Checkbox Hack */
+
+	/* 
+	 * pseudo-class + general/adjacent sibling doesn't work
+	 * on Android <= 4.1.2 so we need a hack:
+	 *
+	 * A useless animation :D
+	 */
+	body { -webkit-animation: bugfix infinite 1s; }
+	@-webkit-keyframes bugfix { from {padding:0;} to {padding:0;} }
+
+	input.menuctl[type=checkbox] {
+	   position: absolute;
+	   top: -9999px;
+	   left: -9999px;
+	}
+
+	
+
+	/* Page elements */
+	#pg {
+		margin: 0;
+		border: none;
+	}
+	#pg, #hd, #bd, #ft  {
+		width: 100%;
+	}
+	#bd {
+		background: #FFF;
+	} 
+	#bd #ct {
+		position: relative;
+		width: auto;
+		padding: 0px 20px;
+		margin: 0px;
+/*		top: -40px;
+		left: 15px;*/
+	}
+	#slideshow {
+		margin: 0;
+		width: 100%;
+		height: inherit;
+	}
+	#slideshow img {
+		width: 100%;
+	}
+
+	#bd #sbl {
+		float:none;
+		width: 100%;
+	}
+
+	.sbl-section {
+		width: 94%;
+    	padding: 4%;
+    	border-top: none;
+	}
+
+	.sbl-section h2 {
+		display: none;
+	}
+
+	.recent-news {
+		/*margin-top: 170px;*/
+	}
+
+	.footer-column, .homepage-column {
+    	padding: 2%;
+    	width: 96%;
+	}
+
+	.homepage-column {
+		width: 28%;
+		margin-bottom: 10px;
+	}
+	.homepage-column a {
+		display: inline-block;
+		margin: 0 auto;
+	}
+	.homepage-column a img {
+		width: 100%;
+		height: 100%;
+	}
+	.homepage-column h2, .homepage-column h3 {
+		text-align: center;
+		margin-bottom: 0;
+	}
+	.homepage-column h2 a {
+		font-size: 10px;
+		white-space: nowrap;
+		text-decoration: none;
+	}
+	.homepage-column h3 a {
+		font-size: 9px;
+		white-space: nowrap;
+		text-decoration: none;
+	}
+	.homepage-column p {
+		display: none;
+	}
+
+	.meta {
+		color: #f15d22 !important;
+	}
+
+	#credits, .footer-nav {
+		padding: 20px !important;
+	}
+
+	/*  Hidden elements  */
+
+	.mobile-hide, .mobile-hide a {
+		display: none;
+	}
+
+	.mobile-only {
+		display: block;
+	}
+
+	.callouts {
+		margin-top: 10px;
+		text-align: center;
+	}
+
+	#search, #ct #sbr, #sbl .menu, #ft-inner {
+		display: none;
+	}
+	.footer-nav .menu, .footer-nav h3 {
+		display: none;
+	}
+	.footer-column:first-child > h3 {
+		display: block;
+	}
+
+}
