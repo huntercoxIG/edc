@@ -51,9 +51,9 @@
     <div class="row">
       <?php
         wp_nav_menu( array(
-          'theme_location'    => 'navbar-right',
-          'depth'             => 2,
-          'menu_class'        => 'nav navbar-nav navbar-right',
+          'theme_location'    => 'navbar-left',
+          'depth'             => 3,
+          'menu_class'        => 'nav navbar-nav',
           'fallback_cb'       => 'wp_bootstrap_navwalker::fallback',
           'walker'            => new wp_bootstrap_navwalker())
         );

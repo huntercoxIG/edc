@@ -1,0 +1,206 @@
+.centered {
+  margin: 0px auto;
+  width: 1200px;
+  position: relative;
+}
+
+/* HEADER */
+  #header {
+    width: 100%;
+    height: 150px;
+    background-color: transparent;
+    background-image: url(../img/header-extended2.jpg);
+    background-size: cover;
+    background-position: center;
+  }
+  #header > .centered {
+    height: 150px;
+  }
+  #header > .centered a.logo {
+    height: auto;
+    width: 270px;
+    display: block;
+    padding-top: 20px;
+  }
+  #header > .centered > img {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+  }
+  #header > .centered .top {
+    position: absolute;
+    width: 300px;
+    height: 80px;
+    top: 20px;
+    right: 20px;
+    clear: both;
+  }
+  #header ul.social {
+    list-style-type: none;
+    float: left;
+  }
+  #header ul.social li {
+    display: inline-block;
+    padding-right: 10px;
+  }
+  #header ul.social li a {
+    opacity: 1.0;
+  }
+  #header ul.social li a:hover {
+    opacity: 0.8;
+  }
+  #header ul.social li a.facebook {
+    background-image: url(../img/facebook-icon.png);
+    background-size: cover;
+    display: block;
+    height: 24px;
+    width: 26px;
+  }
+  #header ul.social li a.twitter {
+    background-image: url(../img/twitter-icon.png);
+    background-size: cover;
+    display: block;
+    height: 24px;
+    width: 26px;
+  }
+  #header ul.social li a.youtube {
+    background-image: url(../img/youtube-icon.png);
+    background-size: cover;
+    display: block;
+    height: 24px;
+    width: 26px;
+  }
+  #header a.search-button {
+    color: #fff;
+    opacity: 1.0;
+    float: right;
+    padding-top: 2px;
+    padding-right: 20px;
+  }
+  #header a.search-button:hover {
+    opacity: 0.8;
+  }
+  #header a.search-button i {
+    font-size: 20px;
+  }
+
+/* NAVBAR */
+  #navigation {
+    width: 100%;
+    height: 40px;
+    background-color: #FD8003;
+  }
+  #navigation .navbar-edc {
+    list-style-type: none;
+    padding-top: 10px;
+    padding-left: 0px !important;
+  }
+  #navigation .navbar-edc li {
+    display: inline;
+  }
+  #navigation .navbar-edc > li > a {
+    color: #fff;
+    padding-bottom: 10px;
+    padding-right: 48px;
+  }
+  #navigation .navbar-edc > li > a:hover {
+    background-color: #FD8003;
+    color: #FEE735;
+    text-decoration: none;
+  }
+
+
+/* FAT FOOTER */
+  footer.fat-footer {
+    width: 100%;
+    background-color: #EDF1F1;
+    padding: 20px 0px;
+  }
+  footer.fat-footer .footer-wrap {
+    width: 1200px;
+    height: 220px;
+    margin: 0px auto;
+  }
+  footer.fat-footer .footer-wrap .edc-summary {
+    width: 68%;
+    padding-right: 2%;
+    float: left;
+  }
+  footer.fat-footer .footer-wrap .edc-summary img {
+    padding: 10px 0px 20px 0px;
+  }
+  footer.fat-footer .footer-wrap .edc-contact {
+    width: 28%;
+    padding-left: 2%;
+    float: left;
+  }
+  footer.fat-footer .footer-wrap .edc-contact h4 {
+    color: #FD8003;
+    border-bottom: 1px solid rgba(0,0,0,0.2);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+  footer.fat-footer .footer-wrap .edc-contact p.description {
+    padding: 20px 0px;
+    line-height: 1.8;
+    color: #444;
+  }
+  footer.fat-footer .footer-wrap .edc-contact p strong {
+    font-size: 16px;
+    letter-spacing: 0.8px;
+    line-height: 1.4;
+    color: #444;
+  }
+  footer.fat-footer .footer-wrap .edc-contact p a {
+    color: #444;
+  }
+
+/* BOTTOM FOOTER */
+  footer.site-footer {
+    width: 100%;
+    margin: 0px auto;
+    font-size: 17px !important;
+    clear: both;
+  }
+  footer.site-footer a {
+    color: #000;
+  }
+  footer.site-footer p:first-child {
+    text-align: left;
+    padding: 20px 0px;
+    padding-right: 4%!important;
+    width: auto;
+    float: left;
+  }
+  footer.site-footer p:first-child a {
+    text-align: right !important;
+  }
+  footer.site-footer p:first-child span a {
+    color: #FD8003;
+  }
+  footer.site-footer p:last-child {
+    float: left;
+    padding: 20px 0px;
+  }
+  footer.site-footer p:last-child a {
+    text-align: center;
+    padding-left: 54px;
+  }
+
+
+/* CONTENT */
+  .content {
+    margin: 0px auto;
+    width: 1200px;
+  }
+
+  
+
+
+
+
+
+
+
+
+
