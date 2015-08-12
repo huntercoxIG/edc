@@ -6,7 +6,7 @@ Description: Redirect Pages, Posts or Custom Post Types to another location quic
 Author: Don Fischer
 Author URI: http://www.fischercreativemedia.com/
 Donate link: http://www.fischercreativemedia.com/donations/
-Version: 5.1.0
+Version: 5.1.1
 Text Domain: quick-pagepost-redirect-plugin
 Domain Path: /lang
 License: GPLv2 or later
@@ -33,14 +33,14 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 ===================
 */
 
-global $newqppr, $redirect_plugin;
+global $newqppr, $redirect_plugin, $qppr_setting_links;
+$qppr_setting_links = false;
 start_ppr_class();
 	
 //=======================================
 // Main Plugin Redirect Class.
 //=======================================
 class quick_page_post_reds {
-	
 	public $ppr_nofollow;
 	public $ppr_newindow;
 	public $ppr_url;
@@ -71,7 +71,7 @@ class quick_page_post_reds {
 	public $pprptypes_ok;
 	
 	function __construct() {
-		$this->ppr_curr_version 		= '5.1.0';
+		$this->ppr_curr_version 		= '5.1.1';
 		$this->ppr_nofollow 			= array();
 		$this->ppr_newindow 			= array();
 		$this->ppr_url 					= array();
@@ -86,22 +86,23 @@ class quick_page_post_reds {
 		$this->ppruse_jquery	 		= get_option( 'ppr_use-jquery' );
 		$this->pprptypes_ok				= get_option( 'ppr_qpprptypeok', array() );
 		$this->pproverride_type 		= get_option( 'ppr_override-redirect-type' );
-		$this->pproverride_active 		= get_option( 'ppr_override-active' );
-		$this->pproverride_URL 			= get_option( 'ppr_override-URL' );
-		$this->pproverride_rewrite		= get_option( 'ppr_override-rewrite' );
-		$this->pprmeta_message			= get_option( 'ppr_meta-message' );
-		$this->pprmeta_seconds			= get_option( 'ppr_meta-seconds' );
+		$this->pproverride_active 		= get_option( 'ppr_override-active', '0' );
+		$this->pproverride_URL 			= get_option( 'ppr_override-URL', '' );
+		$this->pproverride_rewrite		= get_option( 'ppr_override-rewrite', '0' );
+		$this->pprmeta_message			= get_option( 'qppr_meta_addon_content', get_option( 'ppr_meta-message', '' ) );
+		$this->pprmeta_seconds			= get_option( 'qppr_meta_addon_sec', get_option( 'ppr_meta-seconds', 0 ) );
 		$this->pproverride_casesensitive= get_option( 'ppr_override-casesensitive' );
 		$this->adminlink 				= admin_url('/', 'admin');
 		$this->fcmlink					= 'http://www.fischercreativemedia.com/plugins';
 		$this->ppr_metaurl				= '';
 		$this->updatemsg				= '';
 		$this->pprshowcols				= get_option( 'ppr_show-columns', '1' );
-		if($this->pprmeta_seconds==''){$this->pprmeta_seconds='0';}
+		//if($this->pprmeta_seconds==''){$this->pprmeta_seconds='0';}
 		
 		//these are for all the time - even if there are overrides
 		add_action( 'admin_init', array( $this, 'save_quick_redirects_fields' ) );
 		add_action( 'admin_init', array( $this, 'ppr_init_check_version' ), 1 );								// checks version of plugin in DB and updates if needed.
+		add_action( 'admin_init', array( $this, 'qppr_meta_plugin_has_addon' ) );
 	  	add_action( 'init', array( $this, 'ppr_parse_request_new' ) );											// parse query vars
 		add_action(	'save_post', array( $this,'ppr_save_metadata' ), 11, 2 ); 									// save the custom fields
 		add_action( 'admin_menu', array( $this,'ppr_add_menu_and_metaboxes' ) ); 								// add the menu items & Metaboxes needed
@@ -118,11 +119,13 @@ class quick_page_post_reds {
 		add_action( 'wp_ajax_qppr_pprhidemessage_ajax', array( $this, 'qppr_pprhidemessage_ajax' )  );			// register ajax messages quick redirect - 5.0.7
 		add_filter( 'qppr_admin_pointers-toplevel_page_redirect-updates', array( $this, 'qppr_register_pointer_existing' ) );  // add pointers filter
 		add_filter( 'qppr_admin_pointers-quick-redirects_page_redirect-options', array( $this, 'qppr_register_pointer_use_jquery' ) ); 	// add pointers filter
+		add_filter( 'qppr_admin_pointers-quick-redirects_page_meta_addon', array( $this, 'qppr_register_pointer_meta' ) ); 	// add pointers filter
 		//add_filter( 'wp_feed_cache_transient_lifetime',array($this,'ppr_wp_feed_options',10, 2)); 			// for testing FAQ page only
 
 		if( $this->pproverride_active != '1' && !is_admin() ){ 									// don't run these if override active is set
 			add_action( 'init', array( $this, 'redirect' ), 1 ); 								// add the 301 redirect action, high priority
 			add_action( 'init', array( $this, 'redirect_post_type' ), 1 ); 						// add the normal redirect action, high priority
+			add_action( 'ppr_meta_head_hook', array( $this, 'override_ppr_metahead' ), 1, 3 );  // takes care of Meta Redirects as of 5.1.1
 			add_action( 'template_redirect', array( $this, 'ppr_do_redirect' ), 1);				// do the redirects
 			add_filter( 'wp_get_nav_menu_items', array( $this, 'ppr_new_nav_menu_fix' ), 1, 1 );// hook into nav menus
 			add_filter( 'wp_list_pages', array( $this, 'ppr_fix_targetsandrels' ) );			// hook into wp_list_pages function
@@ -173,6 +176,20 @@ class quick_page_post_reds {
 		wp_enqueue_script( 'qppr-pointer', plugins_url( 'js/qppr_pointers.js', __FILE__ ), array( 'wp-pointer' ) );
 		wp_localize_script( 'qppr-pointer', 'qpprPointer', $valid_pointers );
 	}
+	
+	function qppr_register_pointer_meta( $p ) {
+		$p['qppr-meta-options'] = array(
+			'target' => '.wrap > h2:first-child',
+			'options' => array(
+				'content' => sprintf( '<h3>%s</h3><p>%s</p>',
+					__( 'New Meta Redirect options.' ,'quick-pagepost-redirect-plugin'),
+					__( 'Please view the Help Tab above to see more information about the Meta Redirect Settings.', 'quick-pagepost-redirect-plugin')
+				),
+				'position' => array( 'edge' => 'top', 'align' => 'right' )
+			)
+		);
+		return $p;
+	}
 
 	function qppr_register_pointer_existing( $p ) {
 		$p['existing-redirects'] = array(
@@ -188,6 +205,7 @@ class quick_page_post_reds {
 		);
 		return $p;
 	}
+	
 	function qppr_register_pointer_use_jquery( $p ) {
 		$p['qppr-use-jquery'] = array(
 			'target' => '#ppr_use-jquery',
@@ -240,14 +258,18 @@ class quick_page_post_reds {
 		$toDelete 			= array();
 		$newRedirects 		= array();
 		$newMeta 			= array();
-		foreach( $rkeys as $key => $val ){
-			$newRedirects[] = array( 'request' => $val, 'destination' => $curRedirects[$val] );
+		if( is_array( $rkeys ) && ! empty( $rkeys ) ){
+			foreach( $rkeys as $key => $val ){
+				$newRedirects[] = array( 'request' => $val, 'destination' => $curRedirects[$val] );
+			}
 		}
-		foreach( $mkeys as $key => $val ){
-			$newMeta[] = array( 'key' => $val, 'newwindow' => ( isset( $curMeta[$val]['newwindow'] ) && $curMeta[$val]['newwindow'] != '' ? $curMeta[$val]['newwindow'] : 0 ), 'nofollow' => ( isset( $curMeta[$val]['nofollow'] ) && $curMeta[$val]['nofollow'] != '' ? $curMeta[$val]['nofollow'] : 0 ) );
+		if( is_array( $mkeys ) && ! empty( $mkeys ) ){
+			foreach( $mkeys as $key => $val ){
+				$newMeta[] = array( 'key' => $val, 'newwindow' => ( isset( $curMeta[$val]['newwindow'] ) && $curMeta[$val]['newwindow'] != '' ? $curMeta[$val]['newwindow'] : 0 ), 'nofollow' => ( isset( $curMeta[$val]['nofollow'] ) && $curMeta[$val]['nofollow'] != '' ? $curMeta[$val]['nofollow'] : 0 ) );
+			}
 		}
-		$originalRowKey 	= $rkeys[$updateRow];
-		$originalRowMetaKey = $mkeys[$updateRow];
+		$originalRowKey 	= isset($rkeys[$updateRow]) ? $rkeys[$updateRow] : '';
+		$originalRowMetaKey = isset($mkeys[$updateRow]) ? $mkeys[$updateRow] : '';
 		if( $originalRowKey == $request ){
 			//if row to update has same request value then just update destination
 			$newRedirects[$updateRow] =  array( 'request' => $request, 'destination' => $destination );
@@ -293,6 +315,7 @@ class quick_page_post_reds {
 		echo 'saved';
 		exit;
 	}
+	
 	function save_quick_redirects_fields(){
 		if( isset( $_POST['submit_301'] ) ) {
 			if( check_admin_referer( 'add_qppr_redirects' )){
@@ -338,7 +361,7 @@ class quick_page_post_reds {
 		update_option( 'quickppr_redirects', sanitize_option( 'quickppr_redirects', $currRedirects ) );
 		update_option( 'quickppr_redirects_meta', sanitize_option( 'quickppr_redirects_meta', $currMeta ) );
 		$this->quickppr_redirectsmeta 	= get_option( 'quickppr_redirects_meta', array() );
-		$this->quickppr_redirects 		= get_option( 'quickppr_redirects'. array() );
+		$this->quickppr_redirects 		= get_option( 'quickppr_redirects', array() );
 		return $currRedirects;
 	}
 	
@@ -350,7 +373,6 @@ class quick_page_post_reds {
 		}
 		return false;
 	}
-	
 
 	function add_custom_columns(){
 		/* Add Column Headers */
@@ -432,10 +454,12 @@ class quick_page_post_reds {
 		$qppr_add_page 	= add_menu_page( 'Quick Redirects', 'Quick Redirects', 'manage_options', 'redirect-updates', array( $this, 'ppr_options_page' ), 'dashicons-external' );
 		add_submenu_page( 'redirect-updates', 'Quick Redirects', 'Quick Redirects', 'manage_options', 'redirect-updates', array( $this,'ppr_options_page' ) );
 		$qppr_exp_page 	= add_submenu_page( 'redirect-updates', 'Import/Export', 'Import/Export', 'manage_options', 'redirect-import-export', array( $this, 'ppr_import_export_page' ) );
-		add_submenu_page( 'redirect-updates', 'Redirect Options', 'Redirect Options', 'manage_options', 'redirect-options', array( $this, 'ppr_settings_page' ) );
 		add_submenu_page( 'redirect-updates', 'Redirect Summary', 'Redirect Summary', 'manage_options', 'redirect-summary', array( $this,'ppr_summary_page' ) );
+		add_submenu_page( 'redirect-updates', 'Redirect Options', 'Redirect Options', 'manage_options', 'redirect-options', array( $this, 'ppr_settings_page' ) );
+		$qppr_meta_page = add_submenu_page( 'redirect-updates', 'Meta Options', 'Meta Options', 'manage_options', 'meta_addon', array( $this, 'qppr_meta_addon_page' ) );
 		add_submenu_page( 'redirect-updates', 'FAQs/Help', 'FAQs/Help', 'manage_options', 'redirect-faqs', array( $this, 'ppr_faq_page' ) );
 		add_action( 'admin_init', array( $this, 'register_pprsettings' ) );
+		add_action( 'load-'.$qppr_meta_page, array( $this, 'qppr_options_help_tab' ) );
 		add_action( 'load-'.$qppr_add_page, array( $this, 'qppr_options_help_tab' ) );
 		add_action( 'load-'.$qppr_exp_page, array( $this, 'qppr_options_help_tab' ) );
 
@@ -470,50 +494,60 @@ class quick_page_post_reds {
 	}
 	
 	function qppr_admin_scripts($hook){
-		if(in_array( $hook, array( 'post-new.php', 'edit.php', 'post.php', 'toplevel_page_redirect-updates', 'quick-redirects_page_redirect-options', 'quick-redirects_page_redirect-summary', 'quick-redirects_page_redirect-faqs', 'quick-redirects_page_redirect-import-export' ) ) ){
+		if(in_array( $hook, array( 'post-new.php', 'edit.php', 'post.php', 'toplevel_page_redirect-updates', 'quick-redirects_page_redirect-options', 'quick-redirects_page_redirect-summary', 'quick-redirects_page_redirect-faqs', 'quick-redirects_page_redirect-import-export', 'quick-redirects_page_meta_addon' ) ) ){
 			$ajax_add_nonce = wp_create_nonce( 'qppr_ajax_verify' );
 			$secDeleteNonce = wp_create_nonce( 'qppr_ajax_delete_ALL_verify' );
 			$protocols 		= apply_filters( 'qppr_allowed_protocols', array( 'http', 'https', 'ftp', 'ftps', 'mailto', 'news', 'irc', 'gopher', 'nntp', 'feed', 'telnet', 'mms', 'rtsp', 'svn', 'tel', 'fax', 'xmpp'));
-			wp_enqueue_style( 'qppr_admin_meta_style', plugins_url( '/css/qppr_admin_style.css', __FILE__ ) , null , '5.1.0' );
-			wp_enqueue_script( 'qppr_admin_meta_script', plugins_url( '/js/qppr_admin_script.js', __FILE__ ) , array('jquery'), '5.1.0');
+			wp_enqueue_style( 'qppr_admin_meta_style', plugins_url( '/css/qppr_admin_style.css', __FILE__ ) , null , $this->ppr_curr_version );
+			wp_enqueue_script( 'qppr_admin_meta_script', plugins_url( '/js/qppr_admin_script.js', __FILE__ ) , array('jquery'), $this->ppr_curr_version );
 			wp_localize_script( 'qppr_admin_meta_script', 'qpprData', array( 'msgQuickDeleteConfirm' => __( 'Are you sure you want to PERMANENTLY Delets ALL Quick Redirects?', 'quick-pagepost-redirect-plugin' ), 'msgIndividualDeleteConfirm' => __( 'Are you sure you want to PERMANENTLY Delets ALL Individual Redirects?', 'quick-pagepost-redirect-plugin' ), 'securityDelete' => $secDeleteNonce, 'protocols' => $protocols, 'msgDuplicate' => __( 'Redirect could not be saved as a redirect already exists with the same Request URL.', 'quick-pagepost-redirect-plugin' ) , 'msgDeleteConfirm' => __( 'Are you sure you want to delete this redirect?', 'quick-pagepost-redirect-plugin' ) , 'msgErrorSave' => __( 'Error Saving Redirect\nTry refreshing the page and trying again.', 'quick-pagepost-redirect-plugin' ) , 'msgSelect' => 'select a file', 'msgFileType' => __( 'File type not allowed,\nAllowed file type: *.txt', 'quick-pagepost-redirect-plugin' ) , 'adminURL' => admin_url('admin.php'),'ajaxurl'=> admin_url('admin-ajax.php'), 'security' => $ajax_add_nonce, 'error' => __('Please add at least one redirect before submitting form', 'quick-pagepost-redirect-plugin')));
 		}
 		return;
 	}	
 	
 	function qppr_frontend_scripts(){
+		global $qppr_setting_links;
+		$qppr_setting_links = true;
 		$turnOff 		= get_option( 'ppr_override-active', '0' ) ;
 		$useJQ 			= get_option( 'ppr_use-jquery', '0' ) ;
 		if( (int) $useJQ == 0 || (int) $turnOff == 1 )
 			return;
 		global $wpdb;
+		$rewrite		= ($this->pproverride_rewrite == '0' || $this->pproverride_rewrite == '') ? false : true;
 		$allNewWin 		= get_option( 'ppr_override-newwindow', '0' ) ;
 		$allNoFoll 		= get_option( 'ppr_override-nofollow', '0' ) ;
 		$noFollNewWin 	= get_option( 'quickppr_redirects_meta', array() );
+		$mainQuick 		= get_option( 'quickppr_redirects', array() );
 		$linkData 		= array();
 		if(is_array($noFollNewWin) && !empty($noFollNewWin)){
 			foreach( $noFollNewWin as $key => $val ){
 				if( (int) $allNewWin == 1 && (int) $allNoFoll == 1 ){
 					$linkData[$key] = array( 1, 1 );
 				}elseif( ( (int) $val['nofollow'] !== 0 || (int) $allNoFoll == 1 ) || ( (int) $val['newwindow'] !== 0 || (int) $allNewWin == 1 ) ){
-					$newwinval = (int) $allNewWin == 1 ? 1 : (int) $val['newwindow'];
-					$nofollval = (int) $allNoFoll == 1 ? 1 : (int) $val['nofollow'];
-					$linkData[$key] = array( $newwinval, $nofollval );
+					$newwinval 	= (int) $allNewWin == 1 ? 1 : (int) $val['newwindow'];
+					$nofollval 	= (int) $allNoFoll == 1 ? 1 : (int) $val['nofollow'];
+					$rewriteval = $rewrite && isset($mainQuick[$key]) && $mainQuick[$key] != '' ? $mainQuick[$key] : '';
+					$linkData[$key] = array( $newwinval, $nofollval, $rewriteval );
 				}
 			};
 		}
-		$joinSQL	= ((int) $allNewWin == 1 || (int) $allNoFoll == 1) ? "" : " INNER JOIN {$wpdb->prefix}postmeta AS mt3 ON ( {$wpdb->prefix}posts.ID = mt3.post_id ) ";
-		$whereSQL 	= ((int) $allNewWin == 1 || (int) $allNoFoll == 1) ? "" : " AND ( ( mt3.meta_key = '_pprredirect_relnofollow' AND CAST(mt3.meta_value AS CHAR) = '1' ) OR ( mt3.meta_key = '_pprredirect_newwindow' AND CAST(mt3.meta_value AS CHAR) = '1' ) ) ";
+		$joinSQL	= ((int) $allNewWin == 1 || (int) $allNoFoll == 1 || $rewrite ) ? "" : " INNER JOIN {$wpdb->prefix}postmeta AS mt3 ON ( {$wpdb->prefix}posts.ID = mt3.post_id ) ";
+		$whereSQL 	= ((int) $allNewWin == 1 || (int) $allNoFoll == 1 || $rewrite ) ? "" : " AND ( ( mt3.meta_key = '_pprredirect_relnofollow' AND CAST(mt3.meta_value AS CHAR) = '1' ) OR ( mt3.meta_key = '_pprredirect_newwindow' AND CAST(mt3.meta_value AS CHAR) = '1' ) OR ( mt3.meta_key = '_pprredirect_rewritelink' AND CAST(mt3.meta_value AS CHAR) = '1' ) ) ";
 		$finalSQL 	= "SELECT {$wpdb->prefix}posts.ID FROM {$wpdb->prefix}posts INNER JOIN {$wpdb->prefix}postmeta ON ( {$wpdb->prefix}posts.ID = {$wpdb->prefix}postmeta.post_id ) INNER JOIN {$wpdb->prefix}postmeta AS mt1 ON ( {$wpdb->prefix}posts.ID = mt1.post_id ) INNER JOIN {$wpdb->prefix}postmeta AS mt2 ON ( {$wpdb->prefix}posts.ID = mt2.post_id ) {$joinSQL} WHERE 1=1 AND ( ( {$wpdb->prefix}postmeta.meta_key = '_pprredirect_active' AND CAST({$wpdb->prefix}postmeta.meta_value AS CHAR) = '1' ) AND ( mt1.meta_key = '_pprredirect_type' AND CAST(mt1.meta_value AS CHAR) != '' ) AND ( mt2.meta_key = '_pprredirect_url' AND CAST(mt2.meta_value AS CHAR) != '' ) {$whereSQL}) AND {$wpdb->prefix}posts.post_type NOT IN ('attachment', 'nav_menu_item', 'revision' ) AND (({$wpdb->prefix}posts.post_status = 'publish')) GROUP BY {$wpdb->prefix}posts.ID ORDER BY {$wpdb->prefix}posts.post_date DESC ";
 		$indReds 	= $wpdb->get_results($finalSQL);
 		if( is_array($indReds) && !empty($indReds) ){
 			foreach( $indReds as $key => $qpost ){
-				$noFoll = (int) $allNoFoll == 1 ? 1 : ( (int) get_post_meta( $qpost->ID, '_pprredirect_relnofollow', true ) );
-				$newWin = (int) $allNewWin == 1 ? 1 : ( get_post_meta( $qpost->ID, '_pprredirect_newwindow', true ) != '' ? 1 : 0 );
-				$redURL = get_permalink($qpost->ID);
-				$linkData[$redURL] = array( $newWin, $noFoll );
+				$destURL 	= get_post_meta( $qpost->ID, '_pprredirect_url', true );
+				$rwMeta 	= (int) get_post_meta( $qpost->ID, '_pprredirect_rewritelink', true ) == 1 ? true : false;
+				$noFoll 	= (int) $allNoFoll == 1 ? 1 : ( (int) get_post_meta( $qpost->ID, '_pprredirect_relnofollow', true ) );
+				$newWin 	= (int) $allNewWin == 1 ? 1 : ( get_post_meta( $qpost->ID, '_pprredirect_newwindow', true ) != '' ? 1 : 0 );
+				$rewriteval = $rewrite || $rwMeta ? $destURL : '';
+				$redURL 	= get_permalink( $qpost->ID );
+				$redURL1 	= post_permalink( $qpost->ID );
+				$linkData[$redURL] = array( $newWin, $noFoll, $rewriteval );
 			}
 		}
+		$qppr_setting_links = false;
 		wp_enqueue_script( 'qppr_frontend_scripts', plugins_url( '/js/qppr_frontend_script.js', __FILE__ ) , array('jquery'), '5.1.0', true );
 		wp_localize_script( 'qppr_frontend_scripts', 'qpprFrontData', array( 'linkData' => $linkData, 'siteURL' => site_url(), 'siteURLq' => $this->getQAddress() ) );
 	}
@@ -526,12 +560,18 @@ class quick_page_post_reds {
 		register_setting( 'ppr-settings-group', 'ppr_override-active' );
 		register_setting( 'ppr-settings-group', 'ppr_override-URL' );
 		register_setting( 'ppr-settings-group', 'ppr_override-rewrite' );
-		register_setting( 'ppr-settings-group', 'ppr_meta-seconds' );
-		register_setting( 'ppr-settings-group', 'ppr_meta-message' );
 		register_setting( 'ppr-settings-group', 'ppr_use-jquery' );
 		register_setting( 'ppr-settings-group', 'ppr_qpprptypeok' );
 		register_setting( 'ppr-settings-group', 'ppr_override-casesensitive' );
 		register_setting( 'ppr-settings-group', 'ppr_show-columns' );
+		//meta settings
+		register_setting( 'qppr-meta-settings-group', 'qppr_meta_addon_sec' );
+		register_setting( 'qppr-meta-settings-group', 'qppr_meta_addon_load' );
+		register_setting( 'qppr-meta-settings-group', 'qppr_meta_append_to' );
+		register_setting( 'qppr-meta-settings-group', 'qppr_meta_addon_trigger' );
+		register_setting( 'qppr-meta-settings-group', 'qppr_meta_addon_content' );
+		register_setting( 'qppr-meta-settings-group', 'ppr_meta-seconds' );
+		register_setting( 'qppr-meta-settings-group', 'ppr_meta-message' );
 	}
 
 	function ppr_wp_feed_options( $cache, $url ){
@@ -576,7 +616,9 @@ class quick_page_post_reds {
 			</div>
 		</div>';
 	}
-	function ppr_summary_page() {?>
+	
+	function ppr_summary_page() {
+?>
 <div class="wrap">
 	<h2><?php echo __( 'Quick Page Post Redirect Summary', 'quick-pagepost-redirect-plugin' );?></h2>
 	<p><?php echo __( 'This is a summary of Individual &amp; Quick 301 Redirects.', 'quick-pagepost-redirect-plugin' );?></p>
@@ -594,35 +636,58 @@ class quick_page_post_reds {
 			if($this->pproverride_nofollow =='1'){echo '<div class="ppr-nfor" style="margin:1px 0;width: 200px;font-weight: bold;padding: 2px;">' . __( 'No Follow Override is on!', 'quick-pagepost-redirect-plugin' ) . '</div>';}
 			if($this->pproverride_newwin =='1'){echo '<div class="ppr-nwor" style="margin:1px 0;width: 200px;font-weight: bold;padding: 2px;">' . __( 'New Window Override is on!', 'quick-pagepost-redirect-plugin' ) . '</div>';}
 			if($this->pproverride_rewrite =='1'){echo '<div class="ppr-rrlor" style="margin:1px 0;width: 200px;font-weight: bold;padding: 2px;">' . __( 'Rewrite Override is on!', 'quick-pagepost-redirect-plugin' ) . '</div>';}
+			$labels 	= array(
+				__( 'ID', 'quick-pagepost-redirect-plugin' ),
+				__( 'post type', 'quick-pagepost-redirect-plugin' ),
+				__( 'active', 'quick-pagepost-redirect-plugin' ),
+				__( 'no follow', 'quick-pagepost-redirect-plugin' ),
+				__( 'new window', 'quick-pagepost-redirect-plugin' ),
+				__( 'type', 'quick-pagepost-redirect-plugin' ),
+				__( 'rewrite link', 'quick-pagepost-redirect-plugin' ),
+				__( 'original URL', 'quick-pagepost-redirect-plugin' ),
+				__( 'redirect to URL', 'quick-pagepost-redirect-plugin' )
+			);
+			$labelsTD 	= array(
+				'<span>'.$labels[0].' :</span>',
+				'<span>'.$labels[1].' :</span>',
+				'<span>'.$labels[2].' :</span>',
+				'<span>'.$labels[3].' :</span>',
+				'<span>'.$labels[4].' :</span>',
+				'<span>'.$labels[5].' :</span>',
+				'<span>'.$labels[6].' :</span>',
+				'<span>'.$labels[7].' :</span>',
+				'<span>'.$labels[8].' :</span>',
+			)
 			?>
 		<table class="form-table qform-table" width="100%">
-			<tr valign="top" class="headrow">
-				<td width="50" align="left"><?php echo __( 'ID', 'quick-pagepost-redirect-plugin' );?></td>
-				<td width="75" align="left"><?php echo __( 'post type', 'quick-pagepost-redirect-plugin' );?></td>
-				<td width="65" align="center"><?php echo __( 'active', 'quick-pagepost-redirect-plugin' );?></td>
-				<td width="65" align="center"><?php echo __( 'no follow', 'quick-pagepost-redirect-plugin' );?></td>
-				<td width="65" align="center"><?php echo __( 'new window', 'quick-pagepost-redirect-plugin' );?></td>
-				<td width="60" align="center"><?php echo __( 'type', 'quick-pagepost-redirect-plugin' );?></td>
-				<td width="50" align="center"><?php echo __( 'rewrite', 'quick-pagepost-redirect-plugin' );?></td>
-				<td align="left"><?php echo __( 'original URL', 'quick-pagepost-redirect-plugin' );?></td>
-				<td align="left"><?php echo __( 'redirect to URL', 'quick-pagepost-redirect-plugin' );?></td>
-			</tr>
+			<thead>
+				<tr scope="col" class="headrow">
+					<th align="center"><?php echo $labels[0];?></th>
+					<th align="center"><?php echo $labels[1];?></th>
+					<th align="center"><?php echo $labels[2];?></th>
+					<th align="center"><?php echo $labels[3];?></th>
+					<th align="center"><?php echo $labels[4];?></th>
+					<th align="center"><?php echo $labels[5];?></th>
+					<th align="center"><?php echo $labels[6];?></th>
+					<th align="left"><?php echo $labels[7];?></th>
+					<th align="left"><?php echo $labels[8];?></th>
+				</tr>
+			</thead>
+			<tbody>
 			<?php 
 			$tempReportArray = array();
 			$tempa = array();
 			$tempQTReportArray = array();
 			if( !empty( $this->quickppr_redirects)){
-				foreach($this->quickppr_redirects as $key=>$redir){
-					$tempQTReportArray = array('url'=>$key,'destinaition'=>$redir);
-					$qr_nofollow = $this->quickppr_redirectsmeta[$key]['nofollow'];
-					$qr_newwindow = $this->quickppr_redirectsmeta[$key]['newwindow'];
-					if($qr_nofollow ==''){$qr_nofollow = '0';}
-					if($qr_newwindow ==''){$qr_newwindow = '0';}
-					if( $this->pproverride_nofollow	== '1' ){ $qr_nofollow = '<span class="ppr-nfor">1</span>'; }
-					if( $this->pproverride_newwin 	== '1' ){ $qr_newwindow = '<span class="ppr-nwor">1</span>'; }
-					if( $this->pproverride_rewrite 	== '1' ){ $qrtrewrit= '<span class="ppr-rrlor">1</span>';$qrtredURL = '<span class="ppr-rrlor">'.$this->pproverride_URL.'</span>';}else{$qrtrewrit = 'N/A';$qrtredURL =$redir;}
-					if( $this->pproverride_active 	== '1' ){ $qrtactive = '<span class="ppr-acor">0</span>';}else{$qrtactive= 1;}
-
+				foreach( $this->quickppr_redirects as $key => $redir ){
+					$tempQTReportArray 	= array('url'=>$key,'destinaition'=>$redir);
+					$qr_nofollow 		= isset($this->quickppr_redirectsmeta[$key]['nofollow']) && $this->quickppr_redirectsmeta[$key]['nofollow'] != '' ? $this->quickppr_redirectsmeta[$key]['nofollow'] : '0';
+					$qr_newwindow 		= isset($this->quickppr_redirectsmeta[$key]['newwindow']) && $this->quickppr_redirectsmeta[$key]['newwindow'] != '' ? $this->quickppr_redirectsmeta[$key]['newwindow'] : '0';
+					$qrtredURL 			= (int) $this->pproverride_rewrite 	== 1 && $this->pproverride_URL != '' ? '<span class="ppr-rrlor">'.$this->pproverride_URL.'</span>' : $redir;
+					$qrtactive 			= (int) $this->pproverride_active 	== 1 ? '<span class="ppr-acor">0</span>' : 1;
+					$qr_nofollow		= (int) $this->pproverride_nofollow	== 1 ? '<span class="ppr-nfor">1</span>' : $qr_nofollow;
+					$qr_newwindow 		= (int) $this->pproverride_newwin 	== 1 ? '<span class="ppr-nwor">1</span>' : $qr_newwindow;
+					$qrtrewrit 			= (int) $this->pproverride_rewrite 	== 1 ? '<span class="ppr-rrlor">1</span>': 'N/A';
 					$tempReportArray[] = array(
 						'_pprredirect_active' => $qrtactive,
 						'_pprredirect_rewritelink' => $qrtrewrit,
@@ -632,7 +697,8 @@ class quick_page_post_reds {
 						'post_type' => 'N/A',
 						'id' => 'N/A',
 						'origurl' => $key,
-						'_pprredirect_url' => $qrtredURL
+						'_pprredirect_url' => $qrtredURL,
+						'_pprredirect_meta_secs' => $this->pprmeta_seconds,
 						);
 				}
 			}
@@ -654,42 +720,48 @@ class quick_page_post_reds {
 				foreach($tempReportArray as $reportItem){
 					$tactive = $reportItem['_pprredirect_active'];
 					if($this->pproverride_active =='1'){$tactive = '<span class="ppr-acor">0</span>';}
-					
 					$trewrit = $reportItem['_pprredirect_rewritelink'];
 					$tnofoll = $reportItem['_pprredirect_relnofollow'];
 					$tnewwin = $reportItem['_pprredirect_newwindow'];
+					$tredSec = $reportItem['_pprredirect_meta_secs'];
 					$tretype = $reportItem['_pprredirect_type'];
 					$tredURL = $reportItem['_pprredirect_url'];
 					$tpotype = $reportItem['post_type'];
 					$tpostid = $reportItem['id'];
-					
-					if($tnewwin == '0' || $tnewwin == ''){$tnewwin = '0';}elseif($tnewwin == 'N/A'){$tnewwin = 'N/A';}elseif($tnewwin == '_blank'){$tnewwin = '1';};
-					if($this->pproverride_nofollow =='1'){$tnofoll = '<span class="ppr-nfor">1</span>';}
-					if($this->pproverride_newwin =='1'){$tnewwin= '<span class="ppr-nwor">1</span>';}
-					if($this->pproverride_rewrite =='1'){$trewrit= '<span class="ppr-rrlor">1</span>';$tredURL = '<span class="ppr-rrlor">'.$this->pproverride_URL.'</span>';}
-					
-					if(isset($reportItem['origurl'])){
-						$toriurl = $reportItem['origurl'];
-					}else{
-						$toriurl = get_permalink($tpostid);
-					}
-					if($pclass == 'offrow'){$pclass = 'onrow';}else{$pclass = 'offrow';}
+					if($tnewwin == '0' || $tnewwin == ''){
+						$tnewwin = '0';
+					}elseif($tnewwin == 'N/A'){
+						$tnewwin = 'N/A';
+					}elseif($tnewwin == '_blank'){
+						$tnewwin = '1';
+					};
+					$tnofoll	= (int) $this->pproverride_nofollow == 1 ? '<span class="ppr-nfor">1</span>' : $tnofoll;
+					$tnewwin 	= (int) $this->pproverride_newwin == 1 ? '<span class="ppr-nwor">1</span>' : $tnewwin;
+					$trewrit	= (int) $this->pproverride_rewrite == 1 ? '<span class="ppr-rrlor">1</span>' : $trewrit;
+					$tredURL 	= (int) $this->pproverride_rewrite == 1 && $this->pproverride_URL != '' ? '<span class="ppr-rrlor">' . $this->pproverride_URL . '</span>' : $tredURL;
+					$toriurl 	= isset($reportItem['origurl']) ? $reportItem['origurl'] : get_permalink($tpostid);
+					$pclass 	= $pclass == 'offrow' ? 'onrow' : 'offrow';
 					if($tredURL == 'http://www.example.com' || $tredURL == '<span class="ppr-rrlor">http://www.example.com</span>'){$tredURL='<strong>N/A - redirection will not occur</strong>';}
 				?>
-			<tr valign="top" class="<?php echo $pclass;?>">
-				<td width="50" align="left"><?php echo $tpostid;?></td>
-				<td width="75" align="left"><?php echo $tpotype;?></td>
-				<td width="65" align="center"><?php echo $tactive;?></td>
-				<td width="65" align="center"><?php echo $tnofoll;?></td>
-				<td width="65" align="center"><?php echo $tnewwin;?></td>
-				<td width="60" align="center"><?php echo $tretype;?></td>
-				<td width="50" align="center"><?php echo $trewrit;?></td>
-				<td align="left"><?php echo $toriurl;?></td>
-				<td align="left"><?php echo $tredURL;?></td>
-			</tr>
+				<tr class="<?php echo $pclass;?>">
+					<?php if( $tpostid != 'N/A'){ ?> 
+					<td align="left"><?php echo $labelsTD[0];?><a href="<?php echo admin_url('post.php?post='.$tpostid.'&action=edit');?>" title="edit"><?php echo $tpostid;?></a></td>
+					<?php }else{ ?>
+					<td align="left"><?php echo $labelsTD[0];?><?php echo $tpostid;?></td>
+					<?php } ?>
+					<td align="center"><?php echo $labelsTD[1];?><?php echo $tpotype;?></td>
+					<td align="center"><?php echo $labelsTD[2];?><?php echo $tactive;?></td>
+					<td align="center"><?php echo $labelsTD[3];?><?php echo $tnofoll;?></td>
+					<td align="center"><?php echo $labelsTD[4];?><?php echo $tnewwin;?></td>
+					<td align="center"><?php echo $labelsTD[5];?><?php echo $tretype;?></td>
+					<td align="center"><?php echo $labelsTD[6];?><?php echo $trewrit;?></td>
+					<td align="left"><?php echo $labelsTD[7];?><?php echo $toriurl;?></td>
+					<td align="left"><?php echo $labelsTD[8];?><?php echo $tredURL;?></td>
+				</tr>
 			<?php }
 			}
 		 ?>
+		 	</tbody>
 		</table>
 	</div>
 </div>
@@ -864,14 +936,6 @@ class quick_page_post_reds {
 					<td><input type="checkbox" id ="ppr_use-jquery" name="ppr_use-jquery" value="1"<?php if(get_option('ppr_use-jquery')=='1'){echo ' checked="checked" ';} ?>/> <span><?php echo __( 'Increases effectiveness of plugin. If you have a jQuery conflict, try turning this off.', 'quick-pagepost-redirect-plugin' );?></span><br /><span style="margin:0;"><?php echo __( 'Uses jQuery to add the "New Window" and "No Follow" attributes to links.', 'quick-pagepost-redirect-plugin' );?></span></td>
 				</tr>
 				<tr>
-					<th scope="row"><label><?php echo __( 'Meta Refresh Time (in seconds):', 'quick-pagepost-redirect-plugin' );?></label></th>
-					<td><input type="text" size="5" name="ppr_meta-seconds" value="<?php echo get_option('ppr_meta-seconds');?>" /> <span><?php echo __( 'Only needed for Meta Refresh. 0=default (instant)', 'quick-pagepost-redirect-plugin' );?></span></td>
-				</tr>
-				<tr>
-					<th scope="row"><label><?php echo __( 'Meta Refresh Message:', 'quick-pagepost-redirect-plugin' );?></label></th>
-					<td><input type="text" size="25" name="ppr_meta-message" value="<?php echo get_option('ppr_meta-message');?>" /> <span><?php echo __( 'Default is blank. Message to display while waiting for refresh.', 'quick-pagepost-redirect-plugin' );?></span></td>
-				</tr>
-				<tr>
 					<th scope="row" colspan="2" class="qppr-no-padding"><hr noshade color="#EAEAEA" size="1"></th>
 				</tr>
 				<tr>
@@ -911,7 +975,7 @@ class quick_page_post_reds {
 				</tr>
 				<tr>
 					<th scope="row"><label><?php echo __( 'Rewrite ALL Redirects URLs to Show in LINK?', 'quick-pagepost-redirect-plugin' );?> </label></th>
-					<td><input type="checkbox" name="ppr_override-rewrite" value="1"<?php if(get_option('ppr_override-rewrite')=='1'){echo ' checked="checked" ';} ?>/> <span><?php echo __( 'Makes link show redirect URL instead of the original URL. Will not work on Quick Redirects at this time.', 'quick-pagepost-redirect-plugin' );?></span></td>
+					<td><input type="checkbox" name="ppr_override-rewrite" value="1"<?php if(get_option('ppr_override-rewrite')=='1'){echo ' checked="checked" ';} ?>/> <span><?php echo __( 'Makes link show redirect URL instead of the original URL. Will not work on Quick Redirects at this time unless you select "Use jQuery" on the Options Page.', 'quick-pagepost-redirect-plugin' );?></span></td>
 				</tr>
 				<tr>
 					<th scope="row" colspan="2"><hr noshade color="#EAEAEA" size="1"></th>
@@ -935,8 +999,9 @@ class quick_page_post_reds {
 	</div>
 </div>
 <?php } 
+
 	function qppr_options_help_tab(){
-	//generate the options page in the wordpress admin
+		//generate the options page in the wordpress admin
 		$screen 	= get_current_screen();
 		$screen_id 	= $screen->id;
 		if($screen_id == 'toplevel_page_redirect-updates' ){
@@ -978,10 +1043,10 @@ class quick_page_post_reds {
 			   <div style="padding:10px 0;">		
 				<b style="color:red;">' . __( 'IMPORTANT TROUBLESHOOTING NOTES:', 'quick-pagepost-redirect-plugin' ) . '</b>
 				<ol style="margin-top:5px;">
-					<li style="color:#214070;margin-left:15px;list-style-type:disc;">' . __( 'At this time the New Window (NW) and No Follow (NF) features will not work for Quick Redirects.', 'quick-pagepost-redirect-plugin' ) . '</li>
+					<li style="color:#214070;margin-left:15px;list-style-type:disc;">' . __( 'At this time the New Window (NW) and No Follow (NF) features will not work for Quick Redirects unless "Use jQuery" is enabled in the options.', 'quick-pagepost-redirect-plugin' ) . '</li>
 					<li style="color:#214070;margin-left:15px;list-style-type:disc;">' . __( 'It is recommended that the <b>Request URL</b> be relative to the ROOT directory and contain the <code>/</code> at the beginning.', 'quick-pagepost-redirect-plugin' ) . '</li>
 					<li style="color:#214070;margin-left:15px;list-style-type:disc;">' . __( 'If you do use the domain name in the Request URL field, make sure it matches your site\'s domain style and protocol. For example, if your site uses "www" in front of your domain name, be sure to include it. if your site uses <code>https://</code>, use it as the protocol. Our best guess is that your domain and protocol are', 'quick-pagepost-redirect-plugin' ) . ' <code>'.network_site_url('/').'</code></li>
-					<li style="color:#214070;margin-left:15px;list-style-type:disc;">' . __( 'If you are having issues with the link not redirecting on a SSL site with mixed SSL (meaning links can be either SSL or non SSL), try adding two redirects, one with and one without the SSL protocol.', 'quick-pagepost-redirect-plugin' ) . '</li>
+					<!--li style="color:#214070;margin-left:15px;list-style-type:disc;">' . __( 'If you are having issues with the link not redirecting on a SSL site with mixed SSL (meaning links can be either SSL or non SSL), try adding two redirects, one with and one without the SSL protocol.', 'quick-pagepost-redirect-plugin' ) . '</li-->
 					<li style="color:#214070;margin-left:15px;list-style-type:disc;">' . __( 'The <b>Destination</b> field can be any valid URL or relative path (from root), for example', 'quick-pagepost-redirect-plugin' ) . ' <code>http://www.mysite.com/destination-page/</code> OR <code>/destination-page/</code></li>
 					<li style="color:#214070;margin-left:15px;list-style-type:disc;">' . __( 'In order for NW (open in a new window) or NF (rel="nofollow") options to work with Quick Redirects, you need to have:', 'quick-pagepost-redirect-plugin' ) . '
 						<ol>
@@ -1004,11 +1069,47 @@ class quick_page_post_reds {
 			   'title' => __( 'Import Redirects', 'quick-pagepost-redirect-plugin' ), 
 			   'content' => '<div style="padding:10px 0;"><p>Help content coming soon.</p></div>' ,
 			) );
+		}elseif( $screen_id == 'quick-redirects_page_meta_addon' ){
+			$screen->add_help_tab( array( 
+			   'id' => 'qppr-load-page-content',
+			   'title' => __( 'Load Content?', 'quick-pagepost-redirect-plugin' ), 
+			   'content' => '<div style="padding:10px 0;"><p>' . __( 'Use the <strong>Load Content?</strong> option to allow the page content to load as normal or to only load a blank page or the content provided in the <strong>Page Content</strong> section. ', 'quick-pagepost-redirect-plugin' ) . '</p>
+			   <p>' . __( 'If checked, all of the original content will load, so keep this in mind when setting the <strong>Redirect Seconds</strong> - if set too low, the page will not compeletely load. ', 'quick-pagepost-redirect-plugin' ) . '</p></div>' ,
+			) );
+			$screen->add_help_tab( array( 
+			   'id' => 'qppr-redirect-seconds',
+			   'title' => __( 'Redirect Seconds', 'quick-pagepost-redirect-plugin' ), 
+			   'content' => '<div style="padding:10px 0;"><p>' . __( 'Enter the nuber of seconds to wait before the redirect happens. Enter 0 to have an instant redirect*.', 'quick-pagepost-redirect-plugin' ) . '</p>
+			   <p>' . __( '*Keep in mind that the redirect seconds will start counting only AFTER the <strong>Redirect Trigger</strong> element is loaded - so 0 may be slightly longer than instant, depending on how much content needs to load before the trigger happens.', 'quick-pagepost-redirect-plugin' ) . '</p></div>' ,
+			) );
+			$screen->add_help_tab( array( 
+			   'id' => 'qppr-redirect-trigger',
+			   'title' => __( 'Redirect Trigger', 'quick-pagepost-redirect-plugin' ), 
+			   'content' => '<div style="padding:10px 0;"><p>' . __( 'The class or id or tag name of the element to load before the redirect starts counting down. If nothing is used, it will default to the body tag as a trigger.', 'quick-pagepost-redirect-plugin' ) . '</p>
+			   <p>' . __( 'If you use a class, the class name should have the "." in the name, i.e., <strong>.my-class-name</strong>', 'quick-pagepost-redirect-plugin' ) . '</p>
+			   <p>' . __( 'If you use an id, the id should have the "#" in the name, i.e., <strong>#my-id-name</strong>.', 'quick-pagepost-redirect-plugin' ) . '</p>
+			   <p>' . __( 'If you use a tag name, the name should NOT have the "&lt;" or "&gt;" characters in the name, i.e., &lt;body&gt; would just be <strong>body</strong>.', 'quick-pagepost-redirect-plugin' ) . '</p>
+			   <p>' . __( 'Do not use a tag name that is common, like "a" or "div" as it will trigger on all events.', 'quick-pagepost-redirect-plugin' ) . '</p></div>' ,
+			) );
+			$screen->add_help_tab( array( 
+			   'id' => 'qppr-redirect-append',
+			   'title' => __( 'Append Content To', 'quick-pagepost-redirect-plugin' ), 
+			   'content' => '<div style="padding:10px 0;"><p>' . __( 'The class, id or tag name that you want the content in the <strong>Page Content</strong> to be loading into.', 'quick-pagepost-redirect-plugin' ) . '</p>
+			   <p>' . __( 'If you are loading the content of the page, use an existing class or id for an existing element (i.e., .page-content) so your additional page content (if any) is loaded into that element.', 'quick-pagepost-redirect-plugin' ) . '</p>
+			   <p>' . __( 'When no class, id or tag name is used, the <strong>body</strong> tag will be used.', 'quick-pagepost-redirect-plugin' ) . '</p></div>' ,
+			) );
+			$screen->add_help_tab( array( 
+			   'id' => 'qppr-redirect-content',
+			   'title' => __( 'Page Content', 'quick-pagepost-redirect-plugin' ), 
+			   'content' => '<div style="padding:10px 0;"><p>' . __( 'This is your page content you want to add. If you have a "tracking pixel" script or image tag you want to use, add it here.', 'quick-pagepost-redirect-plugin' ) . '</p>
+			   <p>' . __( 'A good example of use, is adding a tracking script (or Facebook Conversion Pixel) to the <strong>Page Content box</strong> and unchecking the <strong>Load Content?</strong> box. Then set the <strong>Redirect Seconds</strong> to 1 or 2 so the script has a chance to load and set <strong>Append Content</strong> To to "body" and <strong>Redirect Trigger</strong> to "body".', 'quick-pagepost-redirect-plugin' ) . '</p>
+			   <p>' . __( 'Additionally, you can add the redirect counter to the page by adding the code sample under the <strong>Page Content</strong> box.', 'quick-pagepost-redirect-plugin' ) . '</p></div>' ,
+			) );
 		}
 	}
 
 	function ppr_options_page(){
-		?>
+?>
 <div class="wrap">
 	<h2><?php echo __( 'Quick Redirects (301 Redirects)', 'quick-pagepost-redirect-plugin' );?></h2>
 	<?php if($this->updatemsg != ''){?>
@@ -1131,7 +1232,6 @@ class quick_page_post_reds {
 				$noCheckedAjax 	= '';
 				$newChecked 	= '';
 				$newCheckedAjax = '';
-				
 				if($newWindow == 1){
 					$newChecked = ' checked="checked"';
 					$newCheckedAjax = 'X';
@@ -1140,7 +1240,6 @@ class quick_page_post_reds {
 					$noChecked = ' checked="checked"'; 
 					$noCheckedAjax = 'X';
 				}
-				
 				$output .= '
 				<tr id="rowpprdel-'.$ww.'" class="qppr-existing">
 					<td class="table-qppr-count"><span class="qppr-count-row">'.($ww + 1).'.</span></td>
@@ -1165,8 +1264,10 @@ class quick_page_post_reds {
 		return $output;
 	}
 	
-
 	function ppr_filter_links ($link = '', $post = array()) {
+		global $qppr_setting_links;
+		if( $qppr_setting_links)
+			return $link;
 		if(isset($post->ID)){	
 			$id = $post->ID;
 		}else{
@@ -1192,6 +1293,9 @@ class quick_page_post_reds {
 	}
 	
 	function ppr_filter_page_links ($link, $post) {
+		global $qppr_setting_links;
+		if( $qppr_setting_links)
+			return $link;
 		$id 		= isset( $post->ID ) ? $post->ID : $post;
 		$newCheck 	= $this->ppr_all_redir_array;
 		if( !is_array( $newCheck ) ){
@@ -1236,6 +1340,7 @@ class quick_page_post_reds {
 				if(!isset($theArray[$key->post_id]['_pprredirect_type'] )){$theArray[$key->post_id]['_pprredirect_type']				= 302;}
 				if(!isset($theArray[$key->post_id]['_pprredirect_relnofollow'])){$theArray[$key->post_id]['_pprredirect_relnofollow']	= 0;}
 				if(!isset($theArray[$key->post_id]['_pprredirect_newwindow'] ))	{$theArray[$key->post_id]['_pprredirect_newwindow']		= 0;}
+				if(!isset($theArray[$key->post_id]['_pprredirect_meta_secs'] ))	{$theArray[$key->post_id]['_pprredirect_meta_secs']		= 0;}
 				if(!isset($theArray[$key->post_id]['_pprredirect_active'] )){$theArray[$key->post_id]['_pprredirect_active']			= 0;}
 				if($theArray[$key->post_id]['_pprredirect_newwindow']!= '0' || $this->pproverride_newwin =='1'){
 					$theArrayNW[$key->post_id] = get_permalink($key->ID);
@@ -1254,42 +1359,11 @@ class quick_page_post_reds {
 		return isset($this->$theval) ? $this->$theval : 0;
 	}
 	
-	function ppr_addmetatohead_theme(){
-		$themsgmeta = '';
-		$themsgmsg 	= '';
-		$hook_name 	= 'ppr_meta_head_hook';
-		// check URL override
-	    if($this->pproverride_URL !=''){
-			$urlsite = $this->pproverride_URL;
-		} else {
-			$urlsite = $this->ppr_metaurl;
-		}
-	    $this->pproverride_URL = ''; //reset
-	    if($this->pprmeta_seconds==''){
-			$this->pprmeta_seconds='0';
-		}
-		$themsgmeta =  '<meta http-equiv="refresh" content="'.$this->pprmeta_seconds.'; URL='.$urlsite.'" />'."\n";
-		if($this->pprmeta_message!='' && $this->pprmeta_seconds!='0'){
-			$themsgmsg =  '<div style="margin-top:20px;text-align:center;">'.$this->pprmeta_message.'</div>'."\n";
-		}
-		if( has_action($hook_name)){
-			do_action( $hook_name,$urlsite,$this->pprmeta_seconds,$this->pprmeta_message);
-			return;
-		}elseif( has_filter($hook_name.'_filter')){
-			$themsgmeta = apply_filters($hook_name, $themsgmeta,$themsgmsg);
-			echo $themsgmeta;
-			return;
-		}else{
-			echo $themsgmeta;
-			echo $themsgmsg;
-			exit; //stop loading page so meta can do it's job without rest of page loading.
-		}
-	}
-
 	function ppr_queryhook($vars) {
 		$vars[] = 'qppr-file-type';
 		return $vars;
 	}
+	
 	function ppr_parse_request_new($wp) {
 		global $wp, $wpdb;
 		$this->ppr_all_redir_array	= $this->get_main_array();
@@ -1475,30 +1549,47 @@ class quick_page_post_reds {
 			$this->ppr_all_redir_array = $this->get_main_array();
 
 		if ( version_compare( $this->thepprversion, $this->ppr_curr_version, '<' ) ){
-			update_option( 'ppr_use-jquery','1'); //default to on
-			update_option( 'ppr_show-columns','1'); //default to on
-			if ( get_option( 'ppr_override-casesensitive' , 'not-set' ) == 'not-set' )
-				update_option( 'ppr_override-casesensitive', '1' );
-			$this->ppruse_jquery 	= '0';
-			$this->pproverride_casesensitive = '1';
+			$metaMsg 	= get_option( 'ppr_meta-message', 'not-set' );
+			$metaMsgNew = get_option( 'qppr_meta_addon_content', 'not-set' );
+			if( $metaMsgNew == 'not-set' && $metaMsg != 'not-set' ){
+				update_option( 'qppr_meta_addon_content', $metaMsg );
+				$this->pprmeta_message = $metaMsg; 
+			}
+			$metaSec 	= get_option( 'ppr_meta-seconds', 'not-set' );
+			$metaSecNew = get_option( 'qppr_meta_addon_sec', 'not-set');
+			if( $metaSecNew == 'not-set' && $metaSec != 'not-set' ){
+				update_option( 'qppr_meta_addon_sec', $metaSec );
+				$this->pprmeta_seconds	= $metaSec;
+			}
+			if( $this->thepprversion == '5.0.7' ){
+				update_option( 'ppr_use-jquery','1'); //default to on
+				update_option( 'ppr_show-columns','1'); //default to on
+			}elseif( $this->thepprversion != '5.1.0' ){
+				if ( get_option( 'ppr_override-casesensitive' , 'not-set' ) == 'not-set' )
+					update_option( 'ppr_override-casesensitive', '1' );
+				$this->ppruse_jquery 	= '0';
+				$this->pproverride_casesensitive = '1';
+			}
 			update_option( 'ppr_version', $this->ppr_curr_version );
 		}
-		if($this->thepprmeta != '1'){
+		
+		if( $this->thepprmeta != '1' ){
 			update_option( 'ppr_meta_clean', '1' );
 			$wpdb->query("UPDATE $wpdb->postmeta SET `meta_key` = CONCAT('_',`meta_key`) WHERE `meta_key` = 'pprredirect_active' OR `meta_key` = 'pprredirect_rewritelink' OR `meta_key` = 'pprredirect_newwindow' OR `meta_key` = 'pprredirect_relnofollow' OR `meta_key` = 'pprredirect_type' OR `meta_key` = 'pprredirect_url';");
 		}
 	}
 
 	function ppr_filter_plugin_actions($links){
-		$links[] 	= '<a href="'.$this->fcmlink.'/donations/">' . __( 'Donate', 'quick-pagepost-redirect-plugin' ) . '</a>';
+		$links[] 	= '<a href="'.$this->adminlink.'admin.php?page=redirect-options"><span class="dashicons dashicons-admin-settings"></span> ' . __( 'Settings', 'quick-pagepost-redirect-plugin' ) . '</a>';
+		//$links[] 	= '<a href="'.$this->fcmlink.'/donations/">' . __( 'Donate', 'quick-pagepost-redirect-plugin' ) . '</a>';
 		return $links;
 	}
 	
 	function ppr_filter_plugin_links($links, $file){
 		if ( $file == plugin_basename(__FILE__) ){
-			$links[] = '<a href="'.$this->adminlink.'admin.php?page=redirect-updates">' . __( 'Quick Redirects', 'quick-pagepost-redirect-plugin' ) . '</a>';
-			$links[] = '<a href="'.$this->adminlink.'admin.php?page=redirect-faqs">' . __( 'FAQ', 'quick-pagepost-redirect-plugin' ) . '</a>';
-			$links[] = '<a target="_blank" href="'.$this->fcmlink.'/donations/">' . __( 'Donate', 'quick-pagepost-redirect-plugin' ) . '</a>';
+			$links[] = '<a href="'.$this->adminlink.'admin.php?page=redirect-updates"><span class="dashicons dashicons-external"></span> ' . __( 'Quick Redirects', 'quick-pagepost-redirect-plugin' ) . '</a>';
+			$links[] = '<a href="'.$this->adminlink.'admin.php?page=redirect-faqs"><span class="dashicons dashicons-editor-help"></span> ' . __( 'FAQ', 'quick-pagepost-redirect-plugin' ) . '</a>';
+			$links[] = '<a target="_blank" href="'.$this->fcmlink.'/donations/"><span class="dashicons dashicons-heart"></span> ' . __( 'Donate', 'quick-pagepost-redirect-plugin' ) . '</a>';
 		}
 		return $links;
 	}
@@ -1516,18 +1607,18 @@ class quick_page_post_reds {
 		// The actual fields for data entry
 		$pprredirecttype = get_post_meta($post->ID, '_pprredirect_type', true) !='' ? get_post_meta($post->ID, '_pprredirect_type', true) : "";
 		$pprredirecturl =  get_post_meta($post->ID, '_pprredirect_url', true)!='' ? get_post_meta($post->ID, '_pprredirect_url', true) : "";
-		echo '<label for="pprredirect_active" style="padding:2px 0;"><input type="checkbox" name="pprredirect_active" value="1" '. checked('1',get_post_meta($post->ID,'_pprredirect_active',true),0).' />&nbsp;' . __( 'Make Redirect <strong>Active</strong>.', 'quick-pagepost-redirect-plugin' ) . '<span class="qppr_meta_help_wrap"><span class="qppr_meta_help_icon">?</span><span class="qppr_meta_help">Check to turn on or redirect will not work.</span></span></label><br />';
-		echo '<label for="pprredirect_newwindow" style="padding:2px 0;"><input type="checkbox" name="pprredirect_newwindow" id="pprredirect_newwindow" value="_blank" '. checked('_blank',get_post_meta($post->ID,'_pprredirect_newwindow',true),0).'>&nbsp;' . __( 'Open redirect link in a <strong>new window.</strong>', 'quick-pagepost-redirect-plugin' ) . '<span class="qppr_meta_help_wrap"><span class="qppr_meta_help_icon">?</span><span class="qppr_meta_help">May not work in all cases.</span></span></label><br />';
-		echo '<label for="pprredirect_relnofollow" style="padding:2px 0;"><input type="checkbox" name="pprredirect_relnofollow" id="pprredirect_relnofollow" value="1" '. checked('1',get_post_meta($post->ID,'_pprredirect_relnofollow',true),0).'>&nbsp;' . __( 'Add <strong>rel="nofollow"</strong> to redirect link.', 'quick-pagepost-redirect-plugin' ) . '<span class="qppr_meta_help_wrap"><span class="qppr_meta_help_icon">?</span><span class="qppr_meta_help">May not work in all cases.</span></span></label><br />';
-		echo '<label for="pprredirect_rewritelink" style="padding:2px 0;"><input type="checkbox" name="pprredirect_rewritelink" id="pprredirect_rewritelink" value="1" '. checked('1',get_post_meta($post->ID,'_pprredirect_rewritelink',true),0).'>&nbsp;' . __( '<strong>Show</strong> the Redirect URL instead of original URL.', 'quick-pagepost-redirect-plugin' ) . ' <span class="qppr_meta_help_wrap"><span class="qppr_meta_help_icon">?</span><span class="qppr_meta_help">May not always work and will only show the link - <strong><em>but NOT in the Address bar, just the link itself.</em></strong></span></span></label><br /><br />';
+		echo '<label for="pprredirect_active" style="padding:2px 0;"><input type="checkbox" name="pprredirect_active" value="1" '. checked('1',get_post_meta($post->ID,'_pprredirect_active',true),0).' />&nbsp;' . __( 'Make Redirect <strong>Active</strong>.', 'quick-pagepost-redirect-plugin' ) . '<span class="qppr_meta_help_wrap"><span class="qppr_meta_help_icon dashicons dashicons-editor-help"></span><span class="qppr_meta_help">' . __( 'Check to turn on or redirect will not work.', 'quick-pagepost-redirect-plugin' ) . '</span></span></label><br />';
+		echo '<label for="pprredirect_newwindow" style="padding:2px 0;"><input type="checkbox" name="pprredirect_newwindow" id="pprredirect_newwindow" value="_blank" '. checked('_blank',get_post_meta($post->ID,'_pprredirect_newwindow',true),0).'>&nbsp;' . __( 'Open in a <strong>new window.</strong>', 'quick-pagepost-redirect-plugin' ) . '<span class="qppr_meta_help_wrap"><span class="qppr_meta_help_icon dashicons dashicons-editor-help"></span><span class="qppr_meta_help">' . __( 'To increase effectivness, select "Use jQuery" in the options.', 'quick-pagepost-redirect-plugin' ) . '</span></span></label><br />';
+		echo '<label for="pprredirect_relnofollow" style="padding:2px 0;"><input type="checkbox" name="pprredirect_relnofollow" id="pprredirect_relnofollow" value="1" '. checked('1',get_post_meta($post->ID,'_pprredirect_relnofollow',true),0).'>&nbsp;' . __( 'Add <strong>rel="nofollow"</strong> to link.', 'quick-pagepost-redirect-plugin' ) . '<span class="qppr_meta_help_wrap"><span class="qppr_meta_help_icon dashicons dashicons-editor-help"></span><span class="qppr_meta_help">' . __( 'To increase effectivness, select "Use jQuery" in the options.', 'quick-pagepost-redirect-plugin' ) . '</span></span></label><br />';
+		echo '<label for="pprredirect_rewritelink" style="padding:2px 0;"><input type="checkbox" name="pprredirect_rewritelink" id="pprredirect_rewritelink" value="1" '. checked('1',get_post_meta($post->ID,'_pprredirect_rewritelink',true),0).'>&nbsp;' . __( '<strong>Show</strong> Redirect URL in link.', 'quick-pagepost-redirect-plugin' ) . ' <span class="qppr_meta_help_wrap"><span class="qppr_meta_help_icon dashicons dashicons-editor-help"></span><span class="qppr_meta_help">' . __( 'To increase effectivness, select "Use jQuery" in the options. This will only change the URL in the link <strong>NOT</strong> the URL in the Address bar.', 'quick-pagepost-redirect-plugin' ) . '</span></span></label><br /><br />';
 		//echo '<label for="pprredirect_casesensitive" style="padding:2px 0;"><input type="checkbox" name="pprredirect_casesensitive" id="pprredirect_casesensitive" value="1" '. checked('1',get_post_meta($post->ID,'_pprredirect_casesensitive',true),0).'>&nbsp;Make the Redirect Case Insensitive.</label><br /><br />';
-		echo '<label for="pprredirect_url"><b>' . __( 'Redirect URL:', 'quick-pagepost-redirect-plugin' ) . '</b></label><br />';
-		echo '<input type="text" style="width:75%;margin-top:2px;margin-bottom:2px;" name="pprredirect_url" value="'.$pprredirecturl.'" /><span class="qppr_meta_help_wrap"><span class="qppr_meta_help_icon">?</span><span class="qppr_meta_help"><br />(i.e., <strong>http://example.com</strong> or <strong>/somepage/</strong> or <strong>p=15</strong> or <strong>155</strong>. Use <b>FULL URL</b> <i>including</i> <strong>http://</strong> for all external <i>and</i> meta redirects.)</span></span><br /><br />';
+		echo '<label for="pprredirect_url"><b>' . __( 'Redirect / Destination URL:', 'quick-pagepost-redirect-plugin' ) . '</b></label><br />';
+		echo '<input type="text" style="width:75%;margin-top:2px;margin-bottom:2px;" name="pprredirect_url" value="'.$pprredirecturl.'" /><span class="qppr_meta_help_wrap"><span class="qppr_meta_help_icon dashicons dashicons-editor-help"></span><span class="qppr_meta_help"><br />' . __( '(i.e., <strong>http://example.com</strong> or <strong>/somepage/</strong> or <strong>p=15</strong> or <strong>155</strong>. Use <b>FULL URL</b> <i>including</i> <strong>http://</strong> for all external <i>and</i> meta redirects.)', 'quick-pagepost-redirect-plugin' ) . '</span></span><br /><br />';
 		echo '<label for="pprredirect_type"><b>' . __( 'Type of Redirect:', 'quick-pagepost-redirect-plugin' ) . '</b></label><br />';
 		
 		switch($pprredirecttype):
 			case "":
-				$ppr_option2=" selected";//default
+				$ppr_option1=" selected"; //default is 301 (as of 5.1.1)
 				break;
 			case "301":
 				$ppr_option1=" selected";
@@ -1544,13 +1635,20 @@ class quick_page_post_reds {
 		endswitch;
 		
 		echo '
-		<select style="margin-top:2px;margin-bottom:2px;width:40%;" name="pprredirect_type">
+		<select style="margin-top:2px;margin-bottom:2px;width:40%;" name="pprredirect_type" id="pprredirect_type">
 		<option value="301" '.$ppr_option1.'>301 ' . __( 'Permanent', 'quick-pagepost-redirect-plugin' ) . '</option>
 		<option value="302" '.$ppr_option2.'>302 ' . __( 'Temporary', 'quick-pagepost-redirect-plugin' ) . '</option>
 		<option value="307" '.$ppr_option3.'>307 ' . __( 'Temporary', 'quick-pagepost-redirect-plugin' ) . '</option>
 		<option value="meta" '.$ppr_option5.'>' . __( 'Meta Redirect', 'quick-pagepost-redirect-plugin' ) . '</option>
-		</select><span class="qppr_meta_help_wrap"><span class="qppr_meta_help_icon">?</span><span class="qppr_meta_help">' . __( 'Default is 302 (Temporary Redirect).', 'quick-pagepost-redirect-plugin' ) . ' </span></span><br /><br />
+		</select><span class="qppr_meta_help_wrap"><span class="qppr_meta_help_icon dashicons dashicons-editor-help"></span><span class="qppr_meta_help">' . __( 'Default is 302 (Temporary Redirect).', 'quick-pagepost-redirect-plugin' ) . ' </span></span><br /><br />
 		';
+		$metasel = ' meta-not-selected';
+		if( $ppr_option5 == ' selected' )
+			$metasel = ' meta-selected';
+			
+		echo '<div class="qppr-meta-section-wrapper'.$metasel.'">';
+		echo '	<label for="pprredirect_meta_secs" style="padding:2px 0;"><strong>' . __( 'Redirect Seconds (ONLY for meta redirects).', 'quick-pagepost-redirect-plugin' ) . '</strong></label><br /><input type="text" name="pprredirect_meta_secs" id="pprredirect_meta_secs" value="'. (get_post_meta($post->ID,'_pprredirect_meta_secs',true) != '' ? get_post_meta($post->ID,'_pprredirect_meta_secs',true ): '' ).'" size="3"><span class="qppr_meta_help_wrap"><span class="qppr_meta_help_icon dashicons dashicons-editor-help"></span><span class="qppr_meta_help">' . __( 'Leave blank to use options setting. 0 = instant.', 'quick-pagepost-redirect-plugin' ) . ' </span></span><br /><br />';
+		echo '</div>';
 		echo __( '<strong>NOTE:</strong> For a Page or Post (or Custom Post) Redirect to work, it may need to be published first and then saved again as a Draft. If you do not already have a page/post created you can add a \'Quick\' redirect using the', 'quick-pagepost-redirect-plugin' ) . ' <a href="./admin.php?page=redirect-updates">' . __( 'Quick Redirects', 'quick-pagepost-redirect-plugin' ) . '</a> ' . __( 'method.', 'quick-pagepost-redirect-plugin' );
 	}
 	
@@ -1577,7 +1675,7 @@ class quick_page_post_reds {
 		}
 		if(!empty($my_meta_data)){unset($my_meta_data);}
 		$my_meta_data = array();
-		if( isset( $_POST['pprredirect_active'] ) || isset( $_POST['pprredirect_url'] ) || isset( $_POST['pprredirect_type'] ) || isset( $_POST['pprredirect_newwindow'] ) || isset($_POST['pprredirect_relnofollow'])):
+		if( isset( $_POST['pprredirect_active'] ) || isset( $_POST['pprredirect_url'] ) || isset( $_POST['pprredirect_type'] ) || isset( $_POST['pprredirect_newwindow'] ) || isset($_POST['pprredirect_relnofollow']) || isset($_POST['pprredirect_meta_secs'])):
 			$protocols 		= apply_filters( 'qppr_allowed_protocols', array( 'http', 'https', 'ftp', 'ftps', 'mailto', 'news', 'irc', 'gopher', 'nntp', 'feed', 'telnet', 'mms', 'rtsp', 'svn', 'tel', 'fax', 'xmpp'));
 			// find & save the form data & put it into an array
 			$my_meta_data['_pprredirect_active'] 		= isset($_REQUEST['pprredirect_active']) 		? sanitize_meta( '_pprredirect_active', $this->isOne_none(intval( $_REQUEST['pprredirect_active'])), 'post' ) : '';
@@ -1586,6 +1684,7 @@ class quick_page_post_reds {
 			$my_meta_data['_pprredirect_type'] 			= isset($_REQUEST['pprredirect_type']) 			? sanitize_meta( '_pprredirect_type', sanitize_text_field( $_REQUEST['pprredirect_type'] ), 'post' )		: '';
 			$my_meta_data['_pprredirect_rewritelink'] 	= isset($_REQUEST['pprredirect_rewritelink']) 	? sanitize_meta( '_pprredirect_rewritelink', $this->isOne_none(intval( $_REQUEST['pprredirect_rewritelink'])), 'post' )	: '';
 			$my_meta_data['_pprredirect_url']    		= isset($_REQUEST['pprredirect_url']) 			? esc_url_raw( $_REQUEST['pprredirect_url'], $protocols ) : ''; 
+			$my_meta_data['_pprredirect_meta_secs']    	= isset($_REQUEST['pprredirect_meta_secs']) &&  $_REQUEST['pprredirect_meta_secs'] != '' ? (int) $_REQUEST['pprredirect_meta_secs'] : ''; 
 
 			$info = $this->appip_parseURI($my_meta_data['_pprredirect_url']);
 			//$my_meta_data['_pprredirect_url'] = esc_url_raw($info['url']);
@@ -1630,21 +1729,23 @@ class quick_page_post_reds {
 		*/
 		$strip_protocol = 0;
 		$tostrip = '';
-		//if($url == '' || $url == 'http://' || $url == 'https://' ){ return $url;}
-		
-		if(substr($url,0,2) == 'p=' || substr($url,0,8) == 'page_id='){ // page or post id
+		if(substr($url,0,2) == 'p=' || substr($url,0,8) == 'page_id='){ 
+			// page or post id
 			$url = network_site_url().'/?'.$url;
-		}elseif(is_numeric($url)){ // page or post id
+		}elseif(is_numeric($url)){ 
+			// page or post id
 			$url = network_site_url().'/?'.$url;
-		}elseif($url == "/" ){ // root
+		}elseif($url == "/" ){ 
+			// root
 			$url = network_site_url().'/';
-		}elseif(substr($url,0,1) == '/' ){ // relative to root
+		}elseif(substr($url,0,1) == '/' ){ 
+			// relative to root
 			$url =  network_site_url().$url;
 			$strip_protocol = 1;
 			$tostrip = network_site_url(); 
-		}elseif(substr($url,0,7) != 'http://' && substr($url,0,8) != 'https://' ){ // no protocol so add it
-			//$url = "http://".$url;
-			//desided not to add it automatically.
+		}elseif(substr($url,0,7) != 'http://' && substr($url,0,8) != 'https://' ){ 
+			//no protocol so add it
+			//NOTE: desided not to add it automatically - too iffy.
 		}
 		$info = @parse_url($url);
 		if($strip_protocol == 1 && $tostrip != '' ){
@@ -1672,15 +1773,17 @@ class quick_page_post_reds {
 			}
 			if(!empty($thefirstppr)){
 				foreach($thefirstppr as $ppitems){
-					if($ppitems['_pprredirect_active'] == 1 && $this->pproverride_newwin =='1'){ // check override of NEW WINDOW
-							$ppr_newindow[] = $ppitems['post_id'];
+					if($ppitems['_pprredirect_active'] == 1 && $this->pproverride_newwin =='1'){ 
+						// check override of NEW WINDOW
+						$ppr_newindow[] = $ppitems['post_id'];
 					}else{
 						if($ppitems['_pprredirect_active'] == 1 && $ppitems['_pprredirect_newwindow'] === '_blank'){
 							$ppr_newindow[] = $ppitems['post_id'];
 						}
 					}
 					
-					if($ppitems['_pprredirect_active']==1 && $this->pproverride_nofollow =='1'){ //check override of NO FOLLOW
+					if($ppitems['_pprredirect_active']==1 && $this->pproverride_nofollow =='1'){ 
+						//check override of NO FOLLOW
 						$ppr_nofollow[] = $ppitems['post_id'];
 					}else{
 						if($ppitems['_pprredirect_active']==1 && $ppitems['_pprredirect_relnofollow'] == 1){
@@ -1688,7 +1791,8 @@ class quick_page_post_reds {
 						}
 					}
 					
-					if($ppitems['_pprredirect_active']==1 && $this->pproverride_rewrite =='1'){ //check override of REWRITE
+					if($ppitems['_pprredirect_active']==1 && $this->pproverride_rewrite =='1'){ 
+						//check override of REWRITE
 						if($this->pproverride_URL!=''){
 							$ppr_url_rewrite[] = $ppitems['post_id'];
 							$ppr_url[$ppitems['post_id']]['URL'] = $this->pproverride_URL; //check override of URL
@@ -1704,13 +1808,12 @@ class quick_page_post_reds {
 					}
 				}
 			}
-
 			if (count($ppr_newindow)<0 && count($ppr_nofollow)<0){
 				return $pages;
 			}
 		}
 		
-		$this_url = 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+		//$this_url = 'http://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 		if(count($ppr_nofollow)>=1) {
 			foreach($ppr_nofollow as $relid){
 			$validexp="@\<li(?:.*?)".$relid."(?:.*?)\>\<a(?:.*?)rel\=\"nofollow\"(?:.*?)\>@i";
@@ -1757,6 +1860,36 @@ class quick_page_post_reds {
 			$_SERVER['HTTPS'] = '';
 		$protocol = $_SERVER['HTTPS'] !== '' && strpos( $home, 'http:' ) === false ? 'https' : 'http'; //check for https
 		return $protocol.'://'.$_SERVER['HTTP_HOST']; 
+	}
+	
+	function ppr_new_nav_menu_fix($ppr){
+		$newmenu = array();
+		if(!empty($ppr)){
+			foreach($ppr as $ppd){
+				if(isset($this->ppr_all_redir_array[$ppd->object_id])){
+					$theIsActives 	= $this->ppr_all_redir_array[$ppd->object_id]['_pprredirect_active'];
+					$theNewWindow 	= $this->ppr_all_redir_array[$ppd->object_id]['_pprredirect_newwindow'];
+					$theNoFollow 	= $this->ppr_all_redir_array[$ppd->object_id]['_pprredirect_relnofollow'];
+					$theRewrite 	= $this->ppr_all_redir_array[$ppd->object_id]['_pprredirect_rewritelink'];
+					$theRedURL	 	= $this->ppr_all_redir_array[$ppd->object_id]['_pprredirect_url'];
+					if($this->pproverride_URL !=''){$theRedURL = $this->pproverride_URL;} // check override
+					if($theIsActives == '1' && $theNewWindow === '_blank'){
+						$ppd->target = '_blank';
+						$ppd->classes[] = 'ppr-new-window';
+					}
+					if($theIsActives == '1' && $theNoFollow == '1'){
+						$ppd->xfn = 'nofollow';
+						$ppd->classes[] = 'ppr-nofollow';
+					}
+					if($theIsActives == '1' && $theRewrite == '1' && $theRedURL != ''){
+						$ppd->url = $theRedURL;
+						$ppd->classes[] = 'ppr-rewrite';
+					}
+				}
+				$newmenu[] = $ppd;
+			}
+		}
+		return $newmenu;
 	}
 	
 	function redirect(){
@@ -1836,6 +1969,7 @@ class quick_page_post_reds {
 					$useURL 	.= apply_filters( 'qppr_filter_quickredirect_append_QS_data', $finalQS ); //add QS back or use filter to set to blank.
 					$useURL 	 = apply_filters( 'qppr_filter_quickredirect_url', $useURL, $index ); // final URL filter
 					$qpprRedType = apply_filters( 'qppr_filter_quickredirect_type', 301 ) ; // filter for redirect type (301 is default here).
+					$qpprMetaSec = apply_filters( 'qppr_filter_quickredirect_secs', $this->pprmeta_seconds ) ; // filter for redirect seconds if type is changed to meta).
 					if( strpos( $useURL, '/' ) !== false && strpos( $useURL, '/' ) === 0 ){
 						// $addback refers to adding back the site home link back to the front of the request URL that is relative to the root. 
 						// by default it will, but this can be filtered to never add it back (or based on URL).
@@ -1848,7 +1982,7 @@ class quick_page_post_reds {
 					// and now the redirect (meta or type set).
 					if( $qpprRedType == 'meta' ){
 						$this->ppr_metaurl = $useURL;
-						add_action( 'wp_head', array( $this, 'ppr_addmetatohead_theme' ), 1 );
+						$this->ppr_addmetatohead_theme();
 					}else{
 						wp_redirect( $useURL, $qpprRedType );
 						exit();
@@ -1857,7 +1991,7 @@ class quick_page_post_reds {
 			}
 		}
 	}
-
+	
 	function ppr_do_redirect( $var1='var1', $var2 = 'var2'){
 		// Individual Redirects Redirect.
 		// Read the list of redirects and if the current page is found in the list, send the visitor on her way
@@ -1868,6 +2002,7 @@ class quick_page_post_reds {
 				$isactive = $this->ppr_all_redir_array[$post->ID]['_pprredirect_active'];
 				$redrtype = $this->ppr_all_redir_array[$post->ID]['_pprredirect_type'];
 				$redrurl  = $this->ppr_all_redir_array[$post->ID]['_pprredirect_url'];
+				$metasecs = $this->ppr_all_redir_array[$post->ID]['_pprredirect_meta_secs'];
 				if($isactive == 1 && $redrurl != '' && $redrurl != 'http://www.example.com'){
 					if($redrtype === 0){$redrtype = '200';}
 					if($redrtype === ''){$redrtype = '302';}
@@ -1887,7 +2022,9 @@ class quick_page_post_reds {
 					if($this->pproverride_type!='0' && $this->pproverride_type!=''){$redrtype = $this->pproverride_type;} //override check
 					if($redrtype == 'meta'){
 						$this->ppr_metaurl = $redrurl;
-						add_action('wp_head', array($this,'ppr_addmetatohead_theme'),1);
+						$post_meta_secs = get_post_meta( $post->ID, '', true);
+						$this->ppr_addmetatohead_theme();
+						//$this->add_extra_meta_features( $redrurl, $metasecs, 'individual', $post );
 					}else{
 						do_action('qppr_do_redirect',$urlsite,$this->pproverride_type);
 						wp_redirect($urlsite,$redrtype);
@@ -1897,37 +2034,143 @@ class quick_page_post_reds {
 			}
 		}
 	}
-	
-	function ppr_new_nav_menu_fix($ppr){
-		$newmenu = array();
-		if(!empty($ppr)){
-			foreach($ppr as $ppd){
-				if(isset($this->ppr_all_redir_array[$ppd->object_id])){
-					$theIsActives 	= $this->ppr_all_redir_array[$ppd->object_id]['_pprredirect_active'];
-					$theNewWindow 	= $this->ppr_all_redir_array[$ppd->object_id]['_pprredirect_newwindow'];
-					$theNoFollow 	= $this->ppr_all_redir_array[$ppd->object_id]['_pprredirect_relnofollow'];
-					$theRewrite 	= $this->ppr_all_redir_array[$ppd->object_id]['_pprredirect_rewritelink'];
-					$theRedURL	 	= $this->ppr_all_redir_array[$ppd->object_id]['_pprredirect_url'];
-					if($this->pproverride_URL !=''){$theRedURL = $this->pproverride_URL;} // check override
-					if($theIsActives == '1' && $theNewWindow === '_blank'){
-						$ppd->target = '_blank';
-						$ppd->classes[] = 'ppr-new-window';
-					}
-					if($theIsActives == '1' && $theNoFollow == '1'){
-						$ppd->xfn = 'nofollow';
-						$ppd->classes[] = 'ppr-nofollow';
-					}
-					if($theIsActives == '1' && $theRewrite == '1' && $theRedURL != ''){
-						$ppd->url = $theRedURL;
-						$ppd->classes[] = 'ppr-rewrite';
-					}
-				}
-				$newmenu[] = $ppd;
-			}
+
+	function ppr_addmetatohead_theme(){
+		$themsgmeta = '';
+		$themsgmsg 	= '';
+		$hook_name 	= 'ppr_meta_head_hook';
+		// check URL override
+	    if($this->pproverride_URL !=''){
+			$urlsite = $this->pproverride_URL;
+		} else {
+			$urlsite = $this->ppr_metaurl;
 		}
-		return $newmenu;
+	    $this->pproverride_URL = ''; //reset
+	    if($this->pprmeta_seconds==''){
+			$this->pprmeta_seconds='0';
+		}
+		$themsgmeta =  '<meta http-equiv="refresh" content="'.$this->pprmeta_seconds.'; URL='.$urlsite.'" />'."\n";
+		if($this->pprmeta_message!='' && $this->pprmeta_seconds!='0'){
+			$themsgmsg =  '<div style="margin-top:20px;text-align:center;">'.$this->pprmeta_message.'</div>'."\n";
+		}
+		if( has_action($hook_name)){
+			do_action( $hook_name,$urlsite,$this->pprmeta_seconds,$this->pprmeta_message);
+			return;
+		}elseif( has_filter($hook_name.'_filter')){
+			$themsgmeta = apply_filters($hook_name, $themsgmeta,$themsgmsg);
+			echo $themsgmeta;
+			return;
+		}else{
+			echo $themsgmeta;
+			echo $themsgmsg;
+			exit;
+		}
 	}
 
+	function override_ppr_metahead( $refresh_url = '', $refresh_secs = 0, $messages = ''){
+		global $post;
+		$messages 	= '';
+		$outHTML   	= array();
+		$psecs 		= '';
+		$ptrigger	= '';
+		$pload		= '';
+		$pcontent	= '';
+		$appMsgTo	= 'body';
+		if( is_object( $post ) && !empty( $post )){
+			$psecs 		= get_post_meta($post->ID, '_pprredirect_meta_secs', true);	
+			$ptrigger	= get_post_meta($post->ID, 'qppr_meta_trigger', true) != '' ? get_post_meta($post->ID, 'qppr_meta_trigger', true) : '';
+			$pload		= (bool) get_post_meta($post->ID, 'qppr_meta_load', true) === true ? '1' : '';
+			$pcontent	= get_post_meta($post->ID, 'qppr_meta_content', true) != '' ? get_post_meta($post->ID, 'qppr_meta_content', true) : '';
+			$appMsgTo	= get_post_meta($post->ID, 'qppr_meta_append', true) != '' ? get_post_meta($post->ID, 'qppr_meta_append', true) : '';
+		}
+		$secs			= $psecs != '' ? $psecs : get_option( 'qppr_meta_addon_sec', $refresh_secs );
+		$class			= $ptrigger != '' ? $ptrigger : get_option( 'qppr_meta_addon_trigger', 'body' );
+		$load			= $pload != '' ? true : (get_option( 'qppr_meta_addon_load', '' ) != '' ? true : false);
+		$content		= $pcontent != '' ? $pcontent : get_option( 'qppr_meta_addon_content', $this->pprmeta_message );
+		$timer 			= (int) $secs * 100;
+		$appendTo		= $appMsgTo != '' ? $appMsgTo : get_option( 'qppr_meta_append_to', 'body' );
+		$injectMsg		= $content != '' ? '<div id="ppr_custom_message">'.$content.'</div>' : '';
+		if( !$load ) {
+			wp_enqueue_script( 'qppr-meta-redirect-no-load', plugins_url( '/js/qppr_meta_redirect.js', __FILE__ ), array( 'jquery' ), $this->ppr_curr_version, false );
+			wp_localize_script( 'qppr-meta-redirect-no-load', 'qpprMetaData', array( 'appendTo' => $appendTo, 'class' => $class, 'secs' => $secs, 'refreshURL' => $refresh_url , 'injectMsg' => $injectMsg ) );
+			global $wp_scripts;
+			$allowScripts = array('jquery','qppr-meta-redirect-no-load');
+			$jqnew = isset( $wp_scripts->queue ) ? $wp_scripts->queue : array() ;
+			if( is_array($jqnew) && !empty($jqnew)){
+				foreach($jqnew as $key => $val){
+					if( !in_array( $val, $allowScripts ) ){
+						unset($wp_scripts->queue[$key]);
+					}
+				}
+			}
+			wp_print_scripts();
+			exit;
+		}else{
+			wp_enqueue_script( 'qppr-meta-redirect-load', plugins_url( '/js/qppr_meta_redirect.js', __FILE__ ), array( 'jquery' ), $this->ppr_curr_version, false );
+			wp_localize_script( 'qppr-meta-redirect-load', 'qpprMetaData', array('appendTo' => $appendTo, 'class' => $class, 'secs' => $secs, 'refreshURL' => $refresh_url , 'injectMsg' => $injectMsg ) );
+		}
+		return;
+	}
+
+	function qppr_meta_addon_page(){
+	?>
+	<div class="wrap" style="position:relative;">
+		<h2><?php echo __( 'Meta Redirect Settings', 'quick-pagepost-redirect-plugin' );?></h2>
+		<?php if ( ! empty( $_GET['settings-updated'] ) ) : ?><div id="message" class="updated notice is-dismissible"><p><?php echo __( 'Settings Updated', 'quick-pagepost-redirect-plugin' );?></p></div><?php endif; ?>
+		<p><?php echo __( 'This section is for updating options for redirects that use the "meta refresh" funcitonality for redirecting.', 'quick-pagepost-redirect-plugin' );?></p>
+		<p><?php echo __( 'Using the setting below, you can add elements or a message to the page that is loaded before tht redirect, or just allow the page to load as normal until the redirect reaches the number of seconds you have set below.', 'quick-pagepost-redirect-plugin' );?></p>
+		<form method="post" action="options.php" class="qpprform">
+			<?php settings_fields( 'qppr-meta-settings-group' ); ?>
+			<table class="form-table">
+				<tr>
+					<th scope="row"><label id="qppr-meta-options"><?php echo __( 'Load Page Content?', 'quick-pagepost-redirect-plugin' );?></label></th>
+					<td><input type="checkbox" name="qppr_meta_addon_load" value="1" <?php echo ( ( get_option( 'qppr_meta_addon_load', '' ) != '' ) ? ' checked="checked"' : '' ); ?> /><span><?php echo __( 'Check if you want the normal page to load before redirect happens (if redirect is 0 seconds, it may not load fully).', 'quick-pagepost-redirect-plugin' );?></span></td>
+				</tr>
+				<tr>
+					<th scope="row"><label><?php echo __( 'Redirect Seconds', 'quick-pagepost-redirect-plugin' );?>:</label></th>
+					<td><input type="text" size="5" name="qppr_meta_addon_sec" value="<?php echo get_option('qppr_meta_addon_sec', '0'); ?>"/><span><code>0</code> = <?php echo __( 'instant', 'quick-pagepost-redirect-plugin' );?>*. <code>10</code> <?php echo __( 'would redirect 10 seconds after the required element is loaded (i.e., body or an element with a specific class). *Intsant will still have a \'slight\' delay, as some content needs to load before the redirect occurs.', 'quick-pagepost-redirect-plugin' );?></span></td>
+				</tr>
+				<tr>
+					<th scope="row"><label><?php echo __( 'Redirect Trigger', 'quick-pagepost-redirect-plugin' );?>:</label></th>
+					<td><input type="text" size="25" id="qppr_meta_addon_trigger" name="qppr_meta_addon_trigger" value="<?php echo get_option('qppr_meta_addon_trigger', 'body'); ?>"/><span><?php printf( __( 'The %1$s, %2$s or tag name of the element you want to load before triggering redirect. Use a %3$s in the class name or %4$s for the ID. <strong><em>For example:</em></strong> if you want it to redirect when the body tag loads, you would type %5$s above. To redirect after an element with a class or ID, use %6$s or %7$s.', 'quick-pagepost-redirect-plugin' ), '<code>class</code>', '<code>ID</code>', '<code>.</code>', '<code>#</code>', '<code>body</code>', '<code>.some-class</code>', '<code>#some-id</code>' );?></span></td>
+				</tr>
+				<tr>
+					<th scope="row"><label><?php echo __( 'Append Content To', 'quick-pagepost-redirect-plugin' );?>:</label></th>
+					<td><input type="text" size="25" id="qppr_meta_append_to" name="qppr_meta_append_to" value="<?php echo get_option('qppr_meta_append_to', 'body'); ?>"/><span><?php printf( __( 'The %1$s, %2$s or tag name of the element you want the content to load into when the page loads.', 'quick-pagepost-redirect-plugin' ), '<code>class</code>', '<code>ID</code>' );?></span></td>
+				</tr>
+				<tr>
+					<th scope="row"><label><?php echo __( 'Page Content', 'quick-pagepost-redirect-plugin' );?>:</label></th>
+					<td><span><?php printf( __( 'Be sure to include a tag with your class or ID or tag name (entered above) so the redirect triggers - if you do not, the redirect will not happen. If you check the box to "Load Page Content", this data will be inserted into the page right after the %1$s tag. Otherwise, it will be the only content shown.', 'quick-pagepost-redirect-plugin' ), '&lt;body&gt;');?><br /><strong><br /><?php echo __( 'Add your content below', 'quick-pagepost-redirect-plugin' );?></strong>.</span>
+						<textarea id="qppr_meta_addon_content" name="qppr_meta_addon_content"><?php echo get_option('qppr_meta_addon_content', ''); ?></textarea>
+						<br /><span><?php echo __( 'To use a counter, add the following:', 'quick-pagepost-redirect-plugin' );?>
+						<pre>&lt;div id="qppr_meta_counter" data-meta-counter-text="This page will redirect in %1$ seconds."&gt;&lt;/div&gt;</pre>
+						<?php echo __( 'The "%1$" will be replaced with the actual seconds.', 'quick-pagepost-redirect-plugin' );?>
+						</span>
+					</td>
+				</tr>
+			</table>
+			<p class="submit"><input type="submit" class="button-primary" value="<?php echo __( 'Save Changes', 'quick-pagepost-redirect-plugin' );?>" /></p>
+		</form>
+	</div>	
+	<?php
+	}
+	
+	function qppr_meta_plugin_has_addon() {
+		if ( ( defined('DOING_AJAX') && DOING_AJAX ) || ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) )
+			return;
+		if ( is_admin() && is_plugin_active( 'qppr-meta-redirect-add-on/qppr-meta-redirect-add-on.php' ) ) {
+			add_action( 'admin_notices', array( $this, 'qppr_meta_addon_admin_notice' ) );
+			deactivate_plugins( 'qppr-meta-redirect-add-on/qppr-meta-redirect-add-on.php' ); 
+		}
+	}
+
+	function qppr_meta_addon_admin_notice() {
+		echo '
+		<div class="update-nag">
+			' . __( 'You have the Addon Plugin', 'quick-pagepost-redirect-plugin' ) . ' <strong>"QPPR - Meta Redirect Add On"</strong> ' . __( 'activated. This plugin\'s functionality is now built into the parent', 'quick-pagepost-redirect-plugin' ) . ' <strong>"Quick Page/Post Redirect Plugin"</strong> ' . __( 'so you no longer need to have the addon plugin installed.', 'quick-pagepost-redirect-plugin' ) . '
+			<br /><br />' . __( 'The plugin will be deactivated now to prevent conflicts. You may delete it if you desire.', 'quick-pagepost-redirect-plugin' ) . '
+		</div>';
+	}
 }
 //=======================================
 // END Main Redirect Class.
@@ -1936,4 +2179,3 @@ function start_ppr_class(){
 	global $newqppr, $redirect_plugin;
 	$redirect_plugin = $newqppr = new quick_page_post_reds(); // call our class
 }
-?>

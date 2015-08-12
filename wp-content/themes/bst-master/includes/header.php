@@ -19,24 +19,28 @@
 <nav class="navbar navbar-default navbar-static-top">
   <div class="container">
     <div class="navbar-header">
-      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+      
+      <a class="navbar-brand" href="<?php echo home_url('/'); ?>"><img src="/wp-content/themes/bst-master/img/edc-logo.png" alt=""></a>
+
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navigation">
         <span class="sr-only">Toggle navigation</span>
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button>
-      <a class="navbar-brand" href="<?php echo home_url('/'); ?>"><img src="/wp-content/themes/bst-master/img/edc-logo.png" alt=""></a>
     </div>
     <div class="collapse navbar-collapse" id="navbar">
       <div class="top">
 
         <ul class="social">
-          <li><img src="/wp-content/themes/bst-master/img/facebook-icon.png" alt=""></li>
-          <li><img src="/wp-content/themes/bst-master/img/twitter-icon.png" alt=""></li>
-          <li><img src="/wp-content/themes/bst-master/img/youtube-icon.png" alt=""></li>
+          <li><a href="#" target="_blank"><img src="/wp-content/themes/bst-master/img/facebook-icon.png" alt=""></a></li>
+          <li><a href="#" target="_blank"><img src="/wp-content/themes/bst-master/img/twitter-icon.png" alt=""></a></li>
+          <li><a href="#" target="_blank"><img src="/wp-content/themes/bst-master/img/youtube-icon.png" alt=""></a></li>
         </ul>
-
+  
         <?php get_template_part('includes/navbar-search'); ?>
+
+        <img src="/wp-content/themes/bst-master/img/hard-working.png" alt="">
       </div>
         
         
@@ -46,7 +50,7 @@
 </nav>
 
 
-<div id="navigation">
+<div id="navigation" class="collapse">
   <div class="container">  
     <div class="row">
       <?php
@@ -58,6 +62,7 @@
           'walker'            => new wp_bootstrap_navwalker())
         );
       ?>
+
     </div>
   </div><!-- /.container -->  
 </div><!-- /#navigation -->

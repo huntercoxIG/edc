@@ -11,7 +11,16 @@
 			e.preventDefault();
 		});
 		var mainurl = qpprData.ajaxurl; 
-		
+		$( '#pprredirect_type').on( 'change', function(e){
+			e.preventDefault();
+			$( '.qppr-meta-section-wrapper' ).removeClass( 'meta-selected meta-not-selected' );
+			var selVal = $( this ).val();
+			if( selVal == 'meta' ){
+				$( '.qppr-meta-section-wrapper' ).slideDown( 'slow' );
+			}else{
+				$( '.qppr-meta-section-wrapper' ).slideUp( 'slow' );
+			}
+		});
 		$( '.qppr-delete-regular' ).on( 'click', function(e){
 			e.preventDefault();
 			if( confirm( qpprData.msgIndividualDeleteConfirm ) ){ 

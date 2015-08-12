@@ -261,7 +261,7 @@ function mpdf_filter($wp_content = '', $do_pdf = false, $convert = false) {
 		$d2b = '\[\/' . $delimiter1 . '\]';
 	}
 
-	format_to_post('the_content');
+	// format_to_post('the_content');
 
 	$wp_content = str_replace($d1a , '', $wp_content);
 	$wp_content = str_replace($d1b , '', $wp_content);

@@ -1,17 +1,25 @@
 <?php get_template_part('includes/header'); ?>
 
-<div class="container">
-  <div class="row">
+<!-- Featured Image -->
+<?php get_template_part('featured-image.php'); ?>
 
-    <div class="col-xs-12 col-sm-8">
-      <div id="content" role="main">
+<div id="main-section" class="container">
+  <div class="row">
+      <!-- Left Side Page Menu - Section Nav page links -->
+      <div id="side-menu" class="col-md-3">
+        <?php do_action('edc_section_nav'); ?>
+      </div>
+
+      <div id="ct" class="col-xs-12 col-md-9">
         <?php get_template_part('includes/loops/content', 'page'); ?>
-      </div><!-- /#content -->
-    </div>
-    
-    <div class="col-xs-6 col-sm-4" id="sidebar" role="navigation">
-      <?php get_template_part('includes/sidebar'); ?>
-    </div>
+        
+        <?php // outputs the 'print to pdf' button
+      if(function_exists('mpdf_pdfbutton')) mpdf_pdfbutton(true); ?>
+        <div id="sbr">
+          
+          <?php get_template_part('includes/sidebar'); ?>
+        </div>
+      </div>
     
   </div><!-- /.row -->
 </div><!-- /.container -->
