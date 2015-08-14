@@ -22,12 +22,7 @@
       
       <a class="navbar-brand" href="<?php echo home_url('/'); ?>"><img src="/wp-content/themes/bst-master/img/edc-logo.png" alt=""></a>
 
-      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navigation">
-        <span class="sr-only">Toggle navigation</span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-      </button>
+      
     </div>
     <div class="collapse navbar-collapse" id="navbar">
       <div class="top">
@@ -50,20 +45,27 @@
 </nav>
 
 
-<div id="navigation" class="collapse">
+<div id="navigation">
   <div class="container">  
-    <div class="row">
-      <?php
-        wp_nav_menu( array(
-          'theme_location'    => 'navbar-left',
-          'depth'             => 3,
-          'menu_class'        => 'nav navbar-nav',
-          'fallback_cb'       => 'wp_bootstrap_navwalker::fallback',
-          'walker'            => new wp_bootstrap_navwalker())
-        );
-      ?>
+    <!-- Mobile Nav Button -->
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#mobile">
+        MENU
+        <span class="glyphicon glyphicon-menu-hamburger" aria-hidden="true"></span>
+      </button>
+    <div id="mobile">
+
+        <?php
+          wp_nav_menu( array(
+            'theme_location'    => 'navbar-left',
+            'depth'             => 4,
+            'menu_class'        => 'nav navbar-nav',
+            'fallback_cb'       => 'wp_bootstrap_navwalker::fallback',
+            'walker'            => new wp_bootstrap_navwalker())
+          );
+        ?>
 
     </div>
+      
   </div><!-- /.container -->  
 </div><!-- /#navigation -->
 <!--

@@ -19,7 +19,7 @@
 					$firstParentID = $first_parent->ID;
 
 				// CFS Select Staff field on Parent Page
-					$parentSelect  = $c->get('staff_contact', $firstParentID);
+					$parentSelect  = CFS()->get('staff_contact', $firstParentID);
 
 
 					echo 'The Parent ID' . '<br>';

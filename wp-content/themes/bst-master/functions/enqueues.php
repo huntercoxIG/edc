@@ -8,8 +8,13 @@ function bst_enqueues() {
 	wp_register_style('bootstrap-css', get_template_directory_uri() . '/css/bootstrap.min.css', false, '3.3.4', null);
 	wp_enqueue_style('bootstrap-css');
 
+	wp_register_style('style-css', get_template_directory_uri() . '/css/style.css', false, null);
+	wp_enqueue_style('style-css');
+
   	wp_register_style('bst-css', get_template_directory_uri() . '/css/bst.css', false, null);
 	wp_enqueue_style('bst-css');
+
+
 
   	wp_register_script('modernizr', get_template_directory_uri() . '/js/modernizr-2.8.3.min.js', false, null, true);
 	wp_enqueue_script('modernizr');
